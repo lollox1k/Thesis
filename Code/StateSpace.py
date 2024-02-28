@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from tqdm.auto import trange, tqdm
+import time
+import logging
+from functools import wraps
+from numba import jit
 
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
@@ -39,6 +43,39 @@ GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar c
 
 #################### class ########################
 
+# set up logging to file
+logging.basicConfig(
+    filename='app.log', 
+    level=logging.INFO, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+
+def log_time(func):
+    """
+    A decorator that logs the average time a function takes to execute in milliseconds.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not hasattr(wrapper, 'total_time'):
+            wrapper.total_time = 0  # Total time spent in all calls
+            wrapper.calls = 0  # Number of calls
+
+        start_time = time.perf_counter_ns()  # Capture start time
+        result = func(*args, **kwargs)  # Call the decorated function
+        end_time = time.perf_counter_ns()  # Capture end time
+
+        elapsed_time_ns = end_time - start_time   # Calculate elapsed time in ns
+        wrapper.total_time += elapsed_time_ns  # Accumulate total time
+        wrapper.calls += 1  # Increment call count
+        average_time_ns = wrapper.total_time / wrapper.calls  # Calculate average time
+        if wrapper.calls % 100_000 == 0:
+            logging.info(f"{func.__name__} executed in {elapsed_time_ns:.2f} ns, average execution time: {average_time_ns:.8f} ns over {wrapper.calls} call(s)")
+        return result
+    return wrapper
+
+
+
 class stateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
@@ -71,9 +108,13 @@ class stateSpace:
 
         self.grid = 2*np.random.randint(0, 10, self.shape, dtype=int) if bc == 'random' else bc*np.ones(self.shape, dtype=int)
 
+        # set the initial state
         if init == 'random':
             self.random_init()
-            
+        elif init == 'snake':
+            self.build_snake()
+        elif init == 'donut':
+            self.build_donut()
         else:
             self.uniform_init(init)
 
@@ -128,131 +169,28 @@ class stateSpace:
             S[3] = self.grid[c, s[0]-1, s[1], 1]
 
             # get list of all possible transformation
-            transformations = self.get_possible_transformations(S)                    ############################ MINIMAL OR FULL ST ####################################
+            transformations = get_possible_transformations(S)                    ############################ MINIMAL OR FULL ST ####################################
             #transformations = self.minimal_transformations(S)
             
             # pick uniformly a random transformation
             M = len(transformations)   # num of possible transformation of current state, compute only once! we also need it to compute tha ratio M/M_prime in acceptance_prob
             index = np.random.randint(0, M)  
             X = transformations[index]
-            #print('transformation: {}'.format(X))
             
-            if self.acceptance_prob(S, M, s, X, c) >= random.random():
+            '''
+            if self.acceptance_prob(S, M, s, X, c) >= random.random():          (S, M, s, X, c, beta, num_colors, algo, get_possible_transformations, get_local_time, get_local_time_i)
+                self.accepted += 1
+                self.square_transformation(c, s, X)
+            else:
+                self.rejected += 1
+            '''
+            
+            if acceptance_prob_optimized(S, M, s, X, c, self.beta, self.num_colors, self.algo, self.grid) >= random.random():  
                 self.accepted += 1
                 self.square_transformation(c, s, X)
             else:
                 self.rejected += 1
     
-    def minimal_transformations(self, S):
-        """
-        Return a list of minimal transformations for a given square S.
-
-        Args:
-          S: The square for which to generate minimal transformations.
-
-        Returns:
-          A list of minimal transformations for the given square.
-        """
-        # list of just minimal transformations for irreducibility
-
-        transformations = [ 
-            (1, 1, 1, 1),                      # uniform +1
-            (-2, 0, 0, 0),                    # single top
-            (0, -2, 0, 0),                    # single right
-            (0, 0, -2, 0),                    # single bottom
-            (0, 0, 0, -2)                    # single left
-            ]    
-        
-        if S[0] < 2:                                                # top is 0 or 1, remove single top -2
-            transformations.remove( (-2, 0, 0, 0) )
-            
-        if S[1] < 2:
-            transformations.remove((0, -2, 0, 0))
-           
-        if S[2] < 2:
-            transformations.remove((0, 0, -2, 0))
-        
-        if S[3] < 2:
-            transformations.remove((0, 0, 0, -2))
-
-        return transformations 
-    
-    def get_possible_transformations(self, S):
-        """
-        Return a list of all possible transformations for a given square S.
-
-        Args:
-          S: The square for which to generate all possible transformations.
-
-        Returns:
-          A list of all possible transformations for the given square.
-        """
-        # list of all possible transformations
-
-        transformations = [ 
-            (-1,-1,-1,-1),                    # uniform                     
-            (-2, 0, 0, 0),                    # single top
-            (0, -2, 0, 0),                    # single right
-            (0, 0, -2, 0),                    # single bottom
-            (0, 0, 0, -2),                    # single left
-            (1,-1, 1,-1), (-1, 1,-1, 1),      # swap opposite
-            (1, 1,-1,-1), (-1,-1, 1, 1),      # swap adjacent
-            (-1, 1,1,-1), ( 1,-1,-1, 1)#,   
-            #(1,-1,-1,-1), (-1, 1, 1, 1),      # triple up
-            #(-1,1,-1,-1), ( 1,-1, 1, 1),      # triple right
-            #(-1,-1,1,-1), ( 1, 1,-1, 1),      # triple bottom
-           # (-1,-1,-1,1), ( 1, 1, 1,-1)       # triple left
-            ]    
-        
-        if S[0] < 2:                                                # top is 0 or 1, remove single top -2
-            transformations.remove( (-2, 0, 0, 0) )
-            if S[0] == 0:                                           # top is 0, remove uniform -1, swap 
-                transformations.remove((-1, -1, -1, -1))
-                transformations.remove((-1, 1, -1, 1))
-                transformations.remove((-1, -1, 1, 1))
-                transformations.remove((-1, 1, 1, -1))
-                #transformations.remove((-1, 1, 1, 1))
-                #transformations.remove((-1, 1, -1, -1))
-                #transformations.remove((-1, -1, 1, -1))
-                #transformations.remove((-1, -1, -1, 1))
-        if S[1] < 2:
-            transformations.remove((0, -2, 0, 0))
-            if S[1] == 0:
-                if (-1, -1,-1,-1) in transformations: transformations.remove((-1, -1,-1,-1))
-                if (1, -1, 1, -1) in transformations: transformations.remove(( 1, -1, 1,-1))
-                if (-1, -1, 1, 1) in transformations: transformations.remove((-1, -1, 1, 1))
-                if (1, -1, -1, 1) in transformations: transformations.remove(( 1, -1,-1, 1))
-                #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-                #if (1, -1, 1, 1) in transformations: transformations.remove((1, -1, 1, 1))
-                #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
-                #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
-
-        if S[2] < 2:
-            transformations.remove((0, 0, -2, 0))
-            if S[2] == 0:
-                if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1, -1,-1))
-                if (-1, 1, -1, 1) in transformations: transformations.remove((-1, 1, -1, 1))
-                if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1, -1,-1))
-                if (1, -1, -1, 1) in transformations: transformations.remove(( 1,-1, -1, 1))
-                #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-                #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
-                #if (1, 1, -1, 1) in transformations: transformations.remove((1, 1, -1, 1))
-                #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
-        
-        if S[3] < 2:
-            transformations.remove((0, 0, 0, -2))
-            if S[3] == 0:
-                if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1,-1, -1))
-                if (1, -1, 1, -1) in transformations: transformations.remove(( 1,-1, 1, -1))
-                if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1,-1, -1))
-                if (-1, 1, 1, -1) in transformations: transformations.remove((-1, 1, 1, -1))
-                #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-                #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
-                #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
-                #if (1, 1, 1, -1) in transformations: transformations.remove((1, 1, 1, -1))
-
-
-        return transformations + [(1, 1, 1, 1), (2, 0, 0, 0), (0, 2, 0, 0), (0, 0, 2, 0), (0, 0, 0, 2)]   #add back always applicable transformations
 
     def square_transformation(self, c, s, X):    # X = (a_1, a_2, a_3, a_4) like in the thesis
         """
@@ -271,91 +209,7 @@ class stateSpace:
         self.grid[c, s[0], s[1]-1, 0] += X[2]
         #left
         self.grid[c, s[0]-1, s[1], 1] += X[3]
-    
-    def acceptance_prob(self, S, M, s, X, c): # S = (l1,l2,l3,l4) links on the square, M, s = (x,y) vertex in the grid, X = (a_1,a_2,a_3,a_4) square transformation, c = 1,..., self.num_colors color of the transformation
-        """
-        Calculate the acceptance probability for a transformation X on a square s of color c.
-
-        Args:
-          S: The current state of the square s.
-          M: The number of possible transformations for the current state.
-          s: The square to be transformed.
-          X: The transformation to be applied to the square.
-          c: The color of the square to be transformed.
-
-        Returns:
-          The acceptance probability for the transformation X on the square s of color c.
-        """
-        # possible transformation ratio
-        S_prime = np.copy(S) 
-        S_prime += np.array(X) #apply the transformation in the square
-
-        #get M_prime, the number of possibile transformation of the new state
-        M_prime = len(self.get_possible_transformations(S_prime))                                 ############################ MINIMAL OR FULL ST ####################################
-        #M_prime = len(self.minimal_transformations(S_prime))
-
-        # prob ratio
-        match X:
-            case (1, 1, 1, 1):                                                               # '\' is used to split lines when they are too long!
-                A = self.beta**4 / (16 * (S[0] + 1)*(S[1] + 1)*(S[2] + 1)*(S[3] + 1) \
-                *(self.num_colors/2 + self.get_local_time(s[0], s[1]))*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1))*(self.num_colors/2 + self.get_local_time(s[0]-1 , s[1]))*(self.num_colors/2 + self.get_local_time(s[0]-1 , s[1]-1))) \
-                *(2*self.get_local_time_i(c, s[0], s[1]) + 1)*(2*self.get_local_time_i(c, s[0], s[1]-1) + 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]-1) + 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]) + 1)
-                
-            case (-1,-1,-1,-1):
-                A = (16 / (self.beta**4)) * S[0]*S[1]*S[2]*S[3] *(self.num_colors/2 + self.get_local_time(s[0], s[1]) - 1)*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1 ) - 1)*(self.num_colors/2 + self.get_local_time(s[0]-1, s[1]) - 1)*(self.num_colors/2 + self.get_local_time(s[0]-1, s[1]-1) - 1) \
-                    / ( (2*self.get_local_time_i(c, s[0], s[1]) - 1)*(2*self.get_local_time_i(c, s[0], s[1]-1) - 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]-1) - 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]) - 1) )
-            
-            case (2, 0, 0, 0):
-                A = self.beta**2/ (4*(S[0]+2)*(S[0]+1)*(self.num_colors/2 + self.get_local_time(s[0], s[1]))*(self.num_colors/2 + self.get_local_time( s[0]-1, s[1]))  ) \
-                    * (2*self.get_local_time_i(c, s[0], s[1]) + 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]) + 1)
-                    
-            case (-2, 0, 0, 0):
-                A = 4 * S[0]*(S[0]-1) / self.beta**2 * (self.num_colors/2 + self.get_local_time(s[0], s[1]) - 1)*(self.num_colors/2 + self.get_local_time(s[0]-1, s[1]) - 1) \
-                    / ( (2*self.get_local_time_i(c, s[0], s[1])- 1)*(2*self.get_local_time_i(c, s[0]-1, s[1])) )
-                    
-            case (0, 2, 0, 0):
-                A = self.beta**2/ (4*(S[1]+2)*(S[1]+1)*(self.num_colors/2 + self.get_local_time(s[0], s[1]))*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1)) )  \
-                    * (2*self.get_local_time_i(c, s[0], s[1]) + 1)*(2*self.get_local_time_i(c, s[0], s[1]-1) + 1)
-                
-            case (0,-2, 0, 0): 
-                A = 4 * S[1]*(S[1]-1) / self.beta**2 * (self.num_colors/2 + self.get_local_time(s[0], s[1]) - 1)*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1) - 1) \
-                    / ( (2*self.get_local_time_i(c, s[0], s[1])- 1)*(2*self.get_local_time_i(c, s[0], s[1]-1)) )
-            case (0, 0, 2, 0):
-                A = self.beta**2/ (4*(S[2]+2)*(S[2]+1)*(self.num_colors/2 + self.get_local_time( s[0]-1, s[1]-1))*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1))  ) \
-                     * (2*self.get_local_time_i(c, s[0]-1, s[1]-1) + 1)*(2*self.get_local_time_i(c, s[0], s[1]-1) + 1)
-            case (0, 0,-2, 0):
-                A = 4 * S[2]*(S[2]-1) / self.beta**2 * (self.num_colors/2 + self.get_local_time( s[0]-1, s[1]-1 ) - 1)*(self.num_colors/2 + self.get_local_time(s[0], s[1]-1 ) - 1) \
-                    / ( (2*self.get_local_time_i(c, s[0]-1, s[1]-1)- 1)*(2*self.get_local_time_i(c, s[0], s[1]-1)) )
-            case (0, 0, 0, 2):
-                A = self.beta**2/ (4*(S[3]+2)*(S[3]+1)*(self.num_colors/2 + self.get_local_time( s[0]-1, s[1]))*(self.num_colors/2 + self.get_local_time( s[0]-1, s[1]-1))  ) \
-                    * (2*self.get_local_time_i(c, s[0]-1, s[1]-1) + 1)*(2*self.get_local_time_i(c, s[0]-1, s[1]) + 1)
-            case (0, 0, 0,-2):
-                A = 4 * S[3]*(S[3]-1) / self.beta**2 * (self.num_colors/2 + self.get_local_time( s[0]-1, s[1]) - 1)*(self.num_colors/2 + self.get_local_time( s[0]-1, s[1]-1) - 1) \
-                    / ( (2*self.get_local_time_i(c, s[0]-1, s[1]-1)- 1)*(2*self.get_local_time_i(c, s[0]-1, s[1])) )
-            
-            case (-1, 1, -1, 1):
-                A = S[0]*S[2]/( (S[1]+1)*(S[3]+1) )
-            case (1, -1, 1, -1):
-                A = S[1]*S[3]/( (S[0]+1)*(S[2]+1) )
-                
-            case (-1, -1, 1, 1):
-                A = S[0]*S[1] / ( (S[2]+1)*(S[3]+1) ) * (self.num_colors/2 + self.get_local_time(s[0], s[1]) - 1 ) / (self.num_colors/2 + self.get_local_time(s[0]-1, s[1]-1)) \
-                    * (2*self.get_local_time_i(c, s[0]-1, s[1]-1)+ 1)/(2*self.get_local_time_i(c, s[0], s[1]) - 1)
-            case (1, 1, -1, -1):
-                A = S[2]*S[3] / ( (S[0]+1)*(S[1]+1) ) * (self.num_colors/2 + self.get_local_time(s[0]-1, s[1]-1) -1 ) / (self.num_colors/2 + self.get_local_time(s[0], s[1]))  \
-                    * (2*self.get_local_time_i(c, s[0], s[1])+ 1)/(2*self.get_local_time_i(c, s[0]-1, s[1]-1) - 1)
-            case (-1, 1, 1, -1):
-                A = S[0]*S[3] / ( (S[1]+1)*(S[2]+1) ) * (self.num_colors/2 + self.get_local_time(s[0]-1, s[1]) -1 ) / (self.num_colors/2 + self.get_local_time(s[0], s[1]-1)) \
-                    * (2*self.get_local_time_i(c, s[0], s[1]-1)+ 1)/(2*self.get_local_time_i(c, s[0]-1, s[1]) - 1)
-            case (1, -1, -1, 1):
-                A = S[2]*S[1] / ( (S[3]+1)*(S[0]+1) ) * (self.num_colors/2 + self.get_local_time(s[0], s[1]-1) -1 ) / (self.num_colors/2 + self.get_local_time(s[0]-1, s[1]) ) \
-                    * (2*self.get_local_time_i(c, s[0]-1, s[1])+ 1)/(2*self.get_local_time_i(c, s[0], s[1]-1) - 1)
-
-            # missing triple transformations
-
-        #print('acceptance prob = {}'.format(min(1, M/M_prime * A)))
-        return min(1, M/M_prime * A) if self.algo == 'metropolis' else 1/(1 + M_prime/(M*A))   # Metropolis  Glauber       #### May impact performanca a bit, better to edit the code!
-    
+        
     def get_grid(self):
         """
         Return the current state of the grid.
@@ -364,7 +218,7 @@ class stateSpace:
           The current state of the grid.
         """
         return self.grid
-    
+
     def get_local_time(self, x, y):
         """
         Calculate the local time for a given square at position (x, y).
@@ -380,7 +234,7 @@ class stateSpace:
         for c in range(self.num_colors):
             local_time += self.grid[c, x, y, 0] + self.grid[c, x, y, 1] + self.grid[c, x, y + 1, 1] + self.grid[c, x + 1, y, 0]
         return local_time // 2
-    
+
     def get_local_time_i(self, c, x, y):
         """
         Calculate the local time for a given square at position (x, y) for color c.
@@ -748,6 +602,64 @@ class stateSpace:
         """
         with open(file_name, 'r') as file:
             self.data = json.load(file)
+            
+            
+    def build_donut(self):
+        #building the donut state
+        for c in range(self.num_colors):
+            for x in range(1, self.grid_size // 4+1):
+                for y in range(1, self.grid_size+1):
+                    self.grid[c, x, y, 0] = 1
+                    self.grid[c, x, y, 1] = 1
+            for x in range(self.grid_size+1 - self.grid_size // 4, self.grid_size+1):
+                for y in range(1, self.grid_size+1):
+                    self.grid[c, x, y, 0] = 1
+                    self.grid[c, x, y, 1] = 1
+        for c in range(self.num_colors):
+            for y in range(1, self.grid_size // 4+1):
+                for x in range(1, self.grid_size+1):
+                    self.grid[c, x, y, 0] = 1
+                    self.grid[c, x, y, 1] = 1
+            for y in range(self.grid_size+1 - self.grid_size // 4, self.grid_size + 1):
+                for x in range(1, self.grid_size+1):
+                    self.grid[c, x, y, 0] = 1
+                    self.grid[c, x, y, 1] = 1
+
+        # add missing links on the outside border
+        for c in range(self.num_colors):
+            for y in range(1, self.grid_size+1):
+                self.grid[c,0, y, 1] = 1
+                self.grid[c, y, 0, 0] = 1 
+                
+        # add missing links on the inside border
+        for c in range(self.num_colors):
+            for x in range(self.grid_size // 4, 3 * self.grid_size // 4 + 1):
+                self.grid[c,x,3 * self.grid_size // 4, 0] = 1
+                self.grid[c, 3 * self.grid_size // 4, x, 1] = 1 
+                
+        #make it a legal state
+        self.grid *= 2
+    
+    
+    def build_snake(self):
+        # build concentric squares
+        offset = self.grid_size // 2+1
+        for c in range(self.num_colors):
+            for k in range(1,offset):
+                self.grid[c, k:-k, k-1, 0] = 1
+                self.grid[c, k-1, k:-k, 1] = 1
+                
+                self.grid[c, (offset-k):(k-offset), offset + k -1, 0] = 1
+                self.grid[c, offset + k -1, (offset-k):(k-offset), 1] = 1
+                
+        # swap some links to join the squares
+        for c in range(self.num_colors):
+            for k in range(1,offset-1):
+                self.grid[c, k+1 , self.grid_size-k+1, 0] = 0
+                self.grid[c, k+1 , self.grid_size-k, 0] = 0
+                
+                self.grid[c, k , self.grid_size-k+1, 1] = 1
+                self.grid[c, k+1 , self.grid_size-k+1, 1] = 1
         
             
 # some utils functions for plotting    
@@ -811,59 +723,197 @@ def infer_style():
     return 'Default'
 
 
-def build_donut(m):
-    #building the donut state
-    for c in range(m.num_colors):
-        for x in range(1, m.grid_size // 4+1):
-            for y in range(1, m.grid_size+1):
-                m.grid[c, x, y, 0] = 1
-                m.grid[c, x, y, 1] = 1
-        for x in range(m.grid_size+1 - m.grid_size // 4, m.grid_size+1):
-            for y in range(1, m.grid_size+1):
-                m.grid[c, x, y, 0] = 1
-                m.grid[c, x, y, 1] = 1
-    for c in range(m.num_colors):
-        for y in range(1, m.grid_size // 4+1):
-            for x in range(1, m.grid_size+1):
-                m.grid[c, x, y, 0] = 1
-                m.grid[c, x, y, 1] = 1
-        for y in range(m.grid_size+1 - m.grid_size // 4, m.grid_size + 1):
-            for x in range(1, m.grid_size+1):
-                m.grid[c, x, y, 0] = 1
-                m.grid[c, x, y, 1] = 1
 
-    # add missing links on the outside border
-    for c in range(m.num_colors):
-        for y in range(1, m.grid_size+1):
-            m.grid[c,0, y, 1] = 1
-            m.grid[c, y, 0, 0] = 1 
-            
-    # add missing links on the inside border
-    for c in range(m.num_colors):
-        for x in range(m.grid_size // 4, 3 * m.grid_size // 4 + 1):
-            m.grid[c,x,3 * m.grid_size // 4, 0] = 1
-            m.grid[c, 3 * m.grid_size // 4, x, 1] = 1 
-            
-    #make it a legal state
-    m.grid *= 2
+        
+        
+           
+#########################################################################################################
+#
+#     To improve performance, we redefine computationally heavy functions outside and use numba 
+#
+#########################################################################################################
+
+@jit(fastmath = True, nopython = True)
+def get_possible_transformations(S):
+    """
+    Return a list of all possible transformations for a given square S.
+
+    Args:
+        S: The square for which to generate all possible transformations.
+
+    Returns:
+        A list of all possible transformations for the given square.
+    """
+    # list of all possible transformations
+
+    transformations = [ 
+        (-1,-1,-1,-1),                    # uniform                     
+        (-2, 0, 0, 0),                    # single top
+        (0, -2, 0, 0),                    # single right
+        (0, 0, -2, 0),                    # single bottom
+        (0, 0, 0, -2),                    # single left
+        (1,-1, 1,-1), (-1, 1,-1, 1),      # swap opposite
+        (1, 1,-1,-1), (-1,-1, 1, 1),      # swap adjacent
+        (-1, 1,1,-1), ( 1,-1,-1, 1)#,   
+        #(1,-1,-1,-1), (-1, 1, 1, 1),      # triple up
+        #(-1,1,-1,-1), ( 1,-1, 1, 1),      # triple right
+        #(-1,-1,1,-1), ( 1, 1,-1, 1),      # triple bottom
+        # (-1,-1,-1,1), ( 1, 1, 1,-1)       # triple left
+        ]    
     
+    if S[0] < 2:                                                # top is 0 or 1, remove single top -2
+        transformations.remove( (-2, 0, 0, 0) )
+        if S[0] == 0:                                           # top is 0, remove uniform -1, swap 
+            transformations.remove((-1, -1, -1, -1))
+            transformations.remove((-1, 1, -1, 1))
+            transformations.remove((-1, -1, 1, 1))
+            transformations.remove((-1, 1, 1, -1))
+            #transformations.remove((-1, 1, 1, 1))
+            #transformations.remove((-1, 1, -1, -1))
+            #transformations.remove((-1, -1, 1, -1))
+            #transformations.remove((-1, -1, -1, 1))
+    if S[1] < 2:
+        transformations.remove((0, -2, 0, 0))
+        if S[1] == 0:
+            if (-1, -1,-1,-1) in transformations: transformations.remove((-1, -1,-1,-1))
+            if (1, -1, 1, -1) in transformations: transformations.remove(( 1, -1, 1,-1))
+            if (-1, -1, 1, 1) in transformations: transformations.remove((-1, -1, 1, 1))
+            if (1, -1, -1, 1) in transformations: transformations.remove(( 1, -1,-1, 1))
+            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
+            #if (1, -1, 1, 1) in transformations: transformations.remove((1, -1, 1, 1))
+            #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
+            #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
+
+    if S[2] < 2:
+        transformations.remove((0, 0, -2, 0))
+        if S[2] == 0:
+            if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1, -1,-1))
+            if (-1, 1, -1, 1) in transformations: transformations.remove((-1, 1, -1, 1))
+            if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1, -1,-1))
+            if (1, -1, -1, 1) in transformations: transformations.remove(( 1,-1, -1, 1))
+            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
+            #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
+            #if (1, 1, -1, 1) in transformations: transformations.remove((1, 1, -1, 1))
+            #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
     
-def build_snake(m):
-    # build concentric squares
-    offset = m.grid_size // 2+1
-    for c in range(m.num_colors):
-        for k in range(1,offset):
-            m.grid[c, k:-k, k-1, 0] = 1
-            m.grid[c, k-1, k:-k, 1] = 1
-            
-            m.grid[c, (offset-k):(k-offset), offset + k -1, 0] = 1
-            m.grid[c, offset + k -1, (offset-k):(k-offset), 1] = 1
-            
-    # swap some links to join the squares
-    for c in range(m.num_colors):
-        for k in range(1,offset-1):
-            m.grid[c, k+1 , m.grid_size-k+1, 0] = 0
-            m.grid[c, k+1 , m.grid_size-k, 0] = 0
-            
-            m.grid[c, k , m.grid_size-k+1, 1] = 1
-            m.grid[c, k+1 , m.grid_size-k+1, 1] = 1
+    if S[3] < 2:
+        transformations.remove((0, 0, 0, -2))
+        if S[3] == 0:
+            if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1,-1, -1))
+            if (1, -1, 1, -1) in transformations: transformations.remove(( 1,-1, 1, -1))
+            if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1,-1, -1))
+            if (-1, 1, 1, -1) in transformations: transformations.remove((-1, 1, 1, -1))
+            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
+            #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
+            #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
+            #if (1, 1, 1, -1) in transformations: transformations.remove((1, 1, 1, -1))
+
+
+    return transformations + [(1, 1, 1, 1), (2, 0, 0, 0), (0, 2, 0, 0), (0, 0, 2, 0), (0, 0, 0, 2)]   #add back always applicable transformations
+
+@jit(fastmath = True, nopython = True)
+def get_local_time(grid, num_colors, x, y):
+        """
+        Calculate the local time for a given square at position (x, y).
+
+        Args:
+          x: The x-coordinate of the square.
+          y: The y-coordinate of the square.
+
+        Returns:
+          The local time for the square at position (x, y).
+        """
+        local_time = 0
+        for c in range(num_colors):
+            local_time += grid[c, x, y, 0] + grid[c, x, y, 1] + grid[c, x, y + 1, 1] + grid[c, x + 1, y, 0]
+        return local_time // 2
+
+@jit(fastmath = True, nopython = True)
+def get_local_time_i(grid, c, x, y):
+    """
+    Calculate the local time for a given square at position (x, y) for color c.
+
+    Args:
+        c: The color for which to calculate the local time.
+        x: The x-coordinate of the square.
+        y: The y-coordinate of the square.
+
+    Returns:
+        The local time for the square at position (x, y) for color c.
+    """
+    return (grid[c, x, y, 0] + grid[c, x, y, 1] + grid[c, x, y + 1, 1] + grid[c, x + 1, y, 0] ) // 2
+                       
+@jit(fastmath = True, nopython = True)
+def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
+    """
+        Calculate the acceptance probability for a transformation X on a square s of color c.
+
+        Args:
+          S: The current state of the square s.
+          M: The number of possible transformations for the current state.
+          s: The square to be transformed.
+          X: The transformation to be applied to the square.
+          c: The color of the square to be transformed.
+          beta: the parameter beta of the simulation.
+          num_colors: number of colors in the grid
+          grid: the grid state.
+
+        Returns:
+          The acceptance probability for the transformation X on the square s of color c.
+        """
+    S_p = S + np.array(X)
+    M_prime = len(get_possible_transformations(S_p))
+    A = 0
+    num_colors_half = num_colors / 2
+
+    if np.array_equal(X, [1, 1, 1, 1]):
+        A = beta**4 / (16 * S_p[0]*S_p[1]*S_p[2]*S_p[3]) * \
+            (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1)) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1)) * \
+            (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
+    elif np.array_equal(X, [-1, -1, -1, -1]):
+        A = (16 / (beta**4)) * S[0]*S[1]*S[2]*S[3] * \
+            (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) / \
+            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) - 1))
+    elif np.array_equal(X, [2, 0, 0, 0]):
+        A = beta**2 / (4 * S_p[0] * (S[0]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]))) * \
+            (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
+    elif np.array_equal(X, [-2, 0, 0, 0]):
+        A = 4 * S[0] * (S[0]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) / \
+            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1])))
+    elif np.array_equal(X, [0, 2, 0, 0]):
+        A = beta**2 / (4 * S_p[1] * (S[1]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1))) * \
+            (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1)
+    elif np.array_equal(X, [0, -2, 0, 0]):
+        A = 4 * S[1] * (S[1]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) / \
+            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1)))
+    elif np.array_equal(X, [0, 0, 2, 0]):
+        A = beta**2 / (4 * S_p[2] * (S[2]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1)) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1))) * \
+            (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1)
+    elif np.array_equal(X, [0, 0, -2, 0]):
+        A = 4 * S[2] * (S[2]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) / \
+            ((2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1)))
+    elif np.array_equal(X, [0, 0, 0, 2]):
+        A = beta**2 / (4 * S_p[3] * (S[3]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1))) * \
+            (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
+    elif np.array_equal(X, [0, 0, 0, -2]):
+        A = 4 * S[3] * (S[3]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) / \
+            ((2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1])))
+    elif np.array_equal(X, [-1, 1, -1, 1]):
+        A = S[0]*S[2] / (S_p[1]*S_p[3])
+    elif np.array_equal(X, [1, -1, 1, -1]):
+        A = S[1]*S[3] / (S_p[0]*S_p[2])
+    elif np.array_equal(X, [-1, -1, 1, 1]):
+        A = S[0]*S[1] / (S_p[2]*S_p[3]) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) / (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1)) * \
+            (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) / (2*get_local_time_i(grid, c, s[0], s[1]) - 1)
+    elif np.array_equal(X, [1, 1, -1, -1]):
+        A = S[2]*S[3] / (S_p[0]*S_p[1]) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) / (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * \
+            (2*get_local_time_i(grid, c, s[0], s[1]) + 1) / (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1)
+    elif np.array_equal(X, [-1, 1, 1, -1]):
+        A = S[0]*S[3] / (S_p[1]*S_p[2]) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) / (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1)) * \
+            (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1) / (2*get_local_time_i(grid, c, s[0]-1, s[1]) - 1)
+    elif np.array_equal(X, [1, -1, -1, 1]):
+        A = S[2]*S[1] / (S_p[3]*S_p[0]) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) / (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1])) * \
+            (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1) / (2*get_local_time_i(grid, c, s[0], s[1]-1) - 1)
+
+    # Calculate the acceptance probability based on the algorithm type
+    return min(1, M/M_prime * A) if algo == 'metropolis' else 1/(1 + M_prime/(M*A))
