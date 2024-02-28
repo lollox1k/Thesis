@@ -23,8 +23,10 @@ The class also includes methods for saving and loading the state of the simulati
 #################### global variables ########################
 
 GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar colors, big gap with the background, GAMMA = 1 means the gradient is linear which cause low visibility sometimes
+plt.style.use("dark_background")  # set dark background as default style
 
-# huge python class with everything inside
+
+# How the grid id saved.
 #
 # m = (m_r, m_g, m_b) 3 colors
 # the grid is from (0,0) to (n,n) make NxN square, each is a 2 dim list, each vertex has an horizontal and vertical edges like so:
@@ -41,8 +43,9 @@ GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar c
 #                     2
 #
 
-#################### class ########################
+#################### logger (disabled) ########################
 
+'''
 # set up logging to file
 logging.basicConfig(
     filename='app.log', 
@@ -73,14 +76,15 @@ def log_time(func):
             logging.info(f"{func.__name__} executed in {elapsed_time_ns:.2f} ns, average execution time: {average_time_ns:.8f} ns over {wrapper.calls} call(s)")
         return result
     return wrapper
+'''
 
-
+#################### class ########################
 
 class stateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
     """
-    def __init__(self, num_colors, grid_size, beta, init = 0, bc = 0, algo = 'metropolis'):  # 'glauber'      
+    def __init__(self, num_colors, grid_size, beta, init = 0, bc = 0, algo = 'metropolis'): 
         """
         Initialize the state space with the given parameters.
 
@@ -332,11 +336,11 @@ class stateSpace:
                 
                 if top > 0:
                     dir.extend([0]*top)
-                elif right > 0:
+                if right > 0:
                     dir.extend([1]*right)
-                elif bottom > 0:
+                if bottom > 0:
                     dir.extend([2]*bottom)
-                elif left > 0:
+                if left > 0:
                     dir.extend([3]*left)
                 
                 if len(dir) == 0:
@@ -376,11 +380,11 @@ class stateSpace:
                     
                     if top > 0:
                         dir.extend([0]*top)
-                    elif right > 0:
+                    if right > 0:
                         dir.extend([1]*right)
-                    elif bottom > 0:
+                    if bottom > 0:
                         dir.extend([2]*bottom)
-                    elif left > 0:
+                    if left > 0:
                         dir.extend([3]*left)
 
                     if (x,y) == starting_vertex:
