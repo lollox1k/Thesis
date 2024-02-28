@@ -1,13 +1,18 @@
-import numpy as np
 import json
 import matplotlib.pyplot as plt
-from tqdm.auto import trange, tqdm
-from matplotlib import cm
-import colorsys
-from matplotlib.colors import Normalize, ListedColormap, LinearSegmentedColormap, PowerNorm
-from matplotlib.cm import ScalarMappable
-from matplotlib.animation import FuncAnimation
+import numpy as np
 import random
+from tqdm.auto import trange, tqdm
+
+import colorsys
+from matplotlib.colors import Normalize, ListedColormap
+from matplotlib.cm import ScalarMappable
+
+
+"""
+The code is implemented as a Python class called StateSpace, which contains methods for initializing the grid, running the simulation, and visualizing the results. 
+The class also includes methods for saving and loading the state of the simulation to/from a file, and for calculating various statistics about the loops formed by each color.
+"""
 
 
 #################### global variables ########################
@@ -35,7 +40,21 @@ GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar c
 #################### class ########################
 
 class stateSpace:
+    """
+    A class representing the state space of a coloring problem on a grid.
+    """
     def __init__(self, num_colors, grid_size, beta, init = 0, bc = 0, algo = 'metropolis'):  # 'glauber'      
+        """
+        Initialize the state space with the given parameters.
+
+        Args:
+          num_colors: The number of colors to be used in the simulation.
+          grid_size: The size of the grid.
+          beta: A parameter used in the acceptance probability calculation.
+          init: The initialization method for the grid. It can be 'random' or a number.
+          bc: The boundary condition for the grid. It can be 'random' or a number.
+          algo: The algorithm to be used for the simulation. It can be 'metropolis' or 'glauber'.
+        """
     
         self.grid_size = grid_size
         self.V = grid_size**2
@@ -68,8 +87,16 @@ class stateSpace:
     def uniform_init(self, k):
         self.grid[:, 1:-1, 1:-1, :] = k*np.ones((self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
         
-    def step(self, num_steps = 1, progress_bar = True, sample_rate = 10_000, observables = None):   # observables is a list of functions like [m.avg_links, m.avg_local_time]
-        
+    def step(self, num_steps = 1, progress_bar = True, sample_rate = 10_000, observables = None): 
+        """
+        Update the grid for a given number of steps.
+
+        Args:
+          num_steps: The number of steps to run the simulation for.
+          progress_bar: Whether to show a progress bar during the simulation.
+          sample_rate: The rate at which to sample observables during the simulation.
+          observables: A list of functions that calculate observables to be measured during the simulation.
+        """
         # add some info to the data dictionary
         self.data['steps'] = num_steps
         self.data['beta'] = self.beta
@@ -117,6 +144,15 @@ class stateSpace:
                 self.rejected += 1
     
     def minimal_transformations(self, S):
+        """
+        Return a list of minimal transformations for a given square S.
+
+        Args:
+          S: The square for which to generate minimal transformations.
+
+        Returns:
+          A list of minimal transformations for the given square.
+        """
         # list of just minimal transformations for irreducibility
 
         transformations = [ 
@@ -142,6 +178,15 @@ class stateSpace:
         return transformations 
     
     def get_possible_transformations(self, S):
+        """
+        Return a list of all possible transformations for a given square S.
+
+        Args:
+          S: The square for which to generate all possible transformations.
+
+        Returns:
+          A list of all possible transformations for the given square.
+        """
         # list of all possible transformations
 
         transformations = [ 
@@ -210,6 +255,14 @@ class stateSpace:
         return transformations + [(1, 1, 1, 1), (2, 0, 0, 0), (0, 2, 0, 0), (0, 0, 2, 0), (0, 0, 0, 2)]   #add back always applicable transformations
 
     def square_transformation(self, c, s, X):    # X = (a_1, a_2, a_3, a_4) like in the thesis
+        """
+        Apply a transformation X to a square s of color c.
+
+        Args:
+          c: The color of the square to be transformed.
+          s: The square to be transformed.
+          X: The transformation to be applied to the square.
+        """
         #top
         self.grid[c, s[0], s[1], 0] += X[0]
         #right
@@ -220,6 +273,19 @@ class stateSpace:
         self.grid[c, s[0]-1, s[1], 1] += X[3]
     
     def acceptance_prob(self, S, M, s, X, c): # S = (l1,l2,l3,l4) links on the square, M, s = (x,y) vertex in the grid, X = (a_1,a_2,a_3,a_4) square transformation, c = 1,..., self.num_colors color of the transformation
+        """
+        Calculate the acceptance probability for a transformation X on a square s of color c.
+
+        Args:
+          S: The current state of the square s.
+          M: The number of possible transformations for the current state.
+          s: The square to be transformed.
+          X: The transformation to be applied to the square.
+          c: The color of the square to be transformed.
+
+        Returns:
+          The acceptance probability for the transformation X on the square s of color c.
+        """
         # possible transformation ratio
         S_prime = np.copy(S) 
         S_prime += np.array(X) #apply the transformation in the square
@@ -291,31 +357,90 @@ class stateSpace:
         return min(1, M/M_prime * A) if self.algo == 'metropolis' else 1/(1 + M_prime/(M*A))   # Metropolis  Glauber       #### May impact performanca a bit, better to edit the code!
     
     def get_grid(self):
+        """
+        Return the current state of the grid.
+
+        Returns:
+          The current state of the grid.
+        """
         return self.grid
     
-    def get_local_time(self, x, y):   # we know already the number of links in square s! we are wasting a bit of compute power 
+    def get_local_time(self, x, y):
+        """
+        Calculate the local time for a given square at position (x, y).
+
+        Args:
+          x: The x-coordinate of the square.
+          y: The y-coordinate of the square.
+
+        Returns:
+          The local time for the square at position (x, y).
+        """
         local_time = 0
         for c in range(self.num_colors):
             local_time += self.grid[c, x, y, 0] + self.grid[c, x, y, 1] + self.grid[c, x, y + 1, 1] + self.grid[c, x + 1, y, 0]
         return local_time // 2
     
-    def get_local_time_i(self, c, x, y): # returns local time of color c
+    def get_local_time_i(self, c, x, y):
+        """
+        Calculate the local time for a given square at position (x, y) for color c.
+
+        Args:
+          c: The color for which to calculate the local time.
+          x: The x-coordinate of the square.
+          y: The y-coordinate of the square.
+
+        Returns:
+          The local time for the square at position (x, y) for color c.
+        """
         return (self.grid[c, x, y, 0] + self.grid[c, x, y, 1] + self.grid[c, x, y + 1, 1] + self.grid[c, x + 1, y, 0] ) // 2
 
-    def max_links(self): # improve
+    def max_links(self):
+        """
+        Return the maximum number of links for each color.
+
+        Returns:
+          The maximum number of links for each color.
+        """
         return np.max(self.grid, axis=(1,2,3))
     
-    def avg_links(self):  # None -> tuple of floats   returns the avg links for each color 
+    def avg_links(self):
+        """
+        Return the average number of links for each color.
+
+        Returns:
+          The average number of links for each color.
+        """
         return np.mean(self.grid, axis = (1,2,3))
 
     def avg_local_time(self):
+        """
+        Return the average local time for the grid.
+
+        Returns:
+          The average local time for the grid.
+        """
         total_local_time = 0
         for x in range(1,self.grid_size+1):
             for y in range(1,self.grid_size+1):
                 total_local_time += self.get_local_time(x,y)
         return total_local_time / self.V
     
-    def loop_builder(self, v1 = None, v2 = None):  # given a link configuration, randomly builds loops (we are choosing a link pairing uniformly) returns list of loops (as a sequence of vertices) for each color
+    def loop_builder(self, v1 = None, v2 = None):
+        """
+        Build loops for each color in the grid.
+
+        If v1 and v2 are both None, return a list of loops for each color and a list of integers representing the lengths of all loops.
+        If v1 and v2 are both not None, return 1 if there exists a loop that joins v1 and v2, and 0 otherwise.
+
+        Args:
+          v1 (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
+          v2 (Optional[Tuple[int, int]]): The ending vertex for the loop. Defaults to None.
+
+        Returns:
+          If v1 and v2 are both None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
+          If v1 and v2 are both not None, return an integer indicating whether there exists a loop that joins v1 and v2 (1 if such a loop exists, 0 otherwise).
+        """
         loops = []
         lenghts = []
         for c in range(self.num_colors):
@@ -434,10 +559,22 @@ class stateSpace:
         return loops, lenghts
     
     def avg_loop_length(self):
+        """
+        Return the average loop length for the grid.
+
+        Returns:
+          The average loop length for the grid.
+        """
         _, lengths = self.loop_builder()
         return np.mean(lengths)
                 
-    def check_state(self): # checks if the current state m is legal (every vertex has even degree)
+    def check_state(self):
+        """
+        Check if the current state of the grid is legal.
+
+        Returns:
+          True if the current state of the grid is legal, False otherwise.
+        """
         for c in range(self.num_colors):
             for x in range(1,self.grid_size+1):
                 for y in range(1,self.grid_size+1):
@@ -446,6 +583,16 @@ class stateSpace:
                         return False 
         return True 
     def plot_one_color(self, c, cmap, ax, alpha = 1.0, linewidth = 1.0): # plots the grid of just one color
+        """
+        Plot the grid for a given color c.
+
+        Args:
+          c: The color to be plotted.
+          cmap: The colormap to be used for plotting.
+          ax: The axis on which to plot the grid.
+          alpha: The transparency level for the plot.
+          linewidth: The width of the lines in the plot.
+        """
         for x in range(0, self.grid_size+2):
                 for y in range(0, self.grid_size+2):
                     # horizontal
@@ -457,10 +604,20 @@ class stateSpace:
                         edge_color = cmap(self.grid[c,x,y,1])
                         ax.plot([x, x], [y, y-1], color=edge_color, linewidth=linewidth, alpha = alpha)
         
-    def plot_loop(self, c, loop, color = 'yellow', alpha = 0.25, linewidth = 1.5):  # plots the longest loop over the grid
+    def plot_loop(self, c, loop, color = 'yellow', alpha = 0.25, linewidth = 1.5): 
+        """
+        Highlights a loop in a given color c.
+
+        Args:
+          c: The color for which to plot.
+          loop: The loop to be plotted.
+          color: The color to be used for plotting the loop. Default is yellow
+          alpha: The transparency level for the plot.
+          linewidth: The width of the lines in the plot.
+        """
         fig, ax = plt.subplots(figsize=(12,12))
         num_segments = int(self.max_links()[c]+1)            #color dependet!
-        cmap = create_cmap(c, num_segments)
+        cmap = create_cmap(self.num_colors, c, num_segments)
         self.plot_one_color(c, cmap, ax)
         for i in range(len(loop)-1):
             ax.plot( [loop[i][0], loop[i+1][0]], [loop[i][1], loop[i+1][1]], linewidth=linewidth, color = color, alpha = alpha)
@@ -468,7 +625,16 @@ class stateSpace:
         ax.plot( [loop[0][0], loop[-1][0]], [loop[0][1], loop[-1][1]], linewidth=1.5, color = color, alpha = alpha)
         ax.set_title('length = {}'.format(len(loop)))
         
-    def plot_grid(self, figsize = (10,8), linewidth = 1.0, colorbar = True, file_name = None):     # plots the grid of every color 
+    def plot_grid(self, figsize = (10,8), linewidth = 1.0, colorbar = True, file_name = None):
+        """
+        Plot the grid for all colors.
+
+        Args:
+          figsize: The size of the figure to be plotted.
+          linewidth: The width of the lines in the plot.
+          colorbar: Whether to show a colorbar in the plot.
+          file_name: The name of the file to save the plot to.
+        """
         # scale figsize base on num_colors
         figsize = (figsize[0]*self.num_colors, figsize[1])
         fig, axes = plt.subplots(1,self.num_colors,figsize = figsize, gridspec_kw={'hspace': 0.05, 'wspace': 0.05}) #, facecolor='black')
@@ -504,7 +670,17 @@ class stateSpace:
             plt.savefig(file_name)
         plt.show()
 
-    def plot_overlap(self, figsize = (12,12), normalized = False, file_name = None, alpha = 0.7, linewidth = 1.0):  # plots every color overlapped
+    def plot_overlap(self, figsize = (12,12), normalized = False, file_name = None, alpha = 0.7, linewidth = 1.0):
+        """
+        Plot the overlap of all colors in the grid.
+
+        Args:
+          figsize: The size of the figure to be plotted.
+          normalized: Whether to normalize the colors in the plot.
+          file_name: The name of the file to save the plot to.
+          alpha: The transparency level for the plot.
+          linewidth: The width of the lines in the plot.
+        """
         # Create a figure and axes
         fig, ax = plt.subplots(figsize = figsize)
 
@@ -536,7 +712,10 @@ class stateSpace:
             plt.savefig(file_name)
         plt.show()
     
-    def summary(self):   # prints some stats
+    def summary(self):
+        """
+        Print a summary of the current state of the grid.
+        """
         print('average number of links: {}'.format(self.avg_links()))
         print('max number of links: {}'.format(self.max_links() ))
         print('avg local time: {}'.format(self.avg_local_time()))
@@ -552,14 +731,20 @@ class stateSpace:
     
     def save_data(self, file_name):
         """
-        save the data dictionary to a json file.
+        Save the current state of the grid to a file.
+
+        Args:
+          file_name: The name of the file to save the data to.
         """
         with open(file_name, 'w') as file:
             json.dump(self.data, file)
             
     def load_data(self, file_name):
         """
-        load the data dictionary from a json file
+        Load the state of the grid from a file.
+
+        Args:
+          file_name: The name of the file to load the data from.
         """
         with open(file_name, 'r') as file:
             self.data = json.load(file)
