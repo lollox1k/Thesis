@@ -11,6 +11,7 @@ from numba import jit
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
 from matplotlib.cm import ScalarMappable
+from matplotlib.collections import LineCollection
 
 
 """
@@ -22,7 +23,6 @@ The class also includes methods for saving and loading the state of the simulati
 #################### global variables ########################
 
 GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar colors, big gap with the background, GAMMA = 1 means the gradient is linear which cause low visibility sometimes
-
 
 # huge python class with everything inside
 #
@@ -436,10 +436,11 @@ class stateSpace:
                         print('###  illegal state!  ###')
                         return False 
         return True 
-    def plot_one_color(self, c, cmap, ax, alpha = 1.0, linewidth = 1.0): # plots the grid of just one color
+    
+    def plot_one_color(self, c, cmap, ax, alpha=1.0, linewidth = 1.0):
         """
-        Plot the grid for a given color c.
-
+        Optimized function to plot grid lines of color c using batch drawing with LineCollection for efficiency.
+        
         Args:
           c: The color to be plotted.
           cmap: The colormap to be used for plotting.
@@ -447,17 +448,27 @@ class stateSpace:
           alpha: The transparency level for the plot.
           linewidth: The width of the lines in the plot.
         """
-        for x in range(0, self.grid_size+2):
-                for y in range(0, self.grid_size+2):
-                    # horizontal
-                    if self.grid[c,x,y,0] != 0:
-                        edge_color = cmap(self.grid[c,x,y,0])
-                        ax.plot([x-1, x], [y, y], color=edge_color, linewidth=linewidth, alpha = alpha)
-                    # vertical
-                    if self.grid[c,x,y,1] != 0:   
-                        edge_color = cmap(self.grid[c,x,y,1])
-                        ax.plot([x, x], [y, y-1], color=edge_color, linewidth=linewidth, alpha = alpha)
-        
+        # Initialize lists to collect line segments
+        segments = []
+
+        # Collect line segments for horizontal and vertical lines
+        for x in range(len(self.grid[0][0])):
+            for y in range(len(self.grid[0][0])):
+                # horizontal lines
+                if self.grid[c][x][y][0] != 0:
+                    segments.append([(x - 1, y), (x, y)])
+                # vertical lines
+                if self.grid[c][x][y][1] != 0:
+                    segments.append([(x, y), (x, y - 1)])
+
+        # Assuming colors are normalized between 0 and 1, adjust as needed
+        line_colors = [cmap(self.grid[c][x][y][z]) for x in range(len(self.grid[0][0])) for y in range(len(self.grid[0][0])) for z in range(2) if self.grid[c][x][y][z] != 0]
+
+        # Create a LineCollection
+        lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
+        ax.add_collection(lc)
+        return lc
+
     def plot_loop(self, c, loop, color = 'yellow', alpha = 0.25, linewidth = 1.5): 
         """
         Highlights a loop in a given color c.
@@ -491,7 +502,8 @@ class stateSpace:
         """
         # scale figsize base on num_colors
         figsize = (figsize[0]*self.num_colors, figsize[1])
-        fig, axes = plt.subplots(1,self.num_colors,figsize = figsize, gridspec_kw={'hspace': 0.05, 'wspace': 0.05}) #, facecolor='black')
+        fig, axes = plt.subplots(1, self.num_colors, figsize=figsize, gridspec_kw={'hspace': 0.05, 'wspace': 0.05})
+        
         # Adjust the space between subplots
         for c in range(self.num_colors):
             # Define a colormap
@@ -917,3 +929,12 @@ def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
 
     # Calculate the acceptance probability based on the algorithm type
     return min(1, M/M_prime * A) if algo == 'metropolis' else 1/(1 + M_prime/(M*A))
+
+
+
+
+
+# since running @jit functions for the first time is slow, we do a step of the chain at import
+m = stateSpace(1, 10, 1)
+m.step(progress_bar=False)
+del m
