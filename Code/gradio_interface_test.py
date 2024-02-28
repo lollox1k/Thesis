@@ -6,7 +6,7 @@ from matplotlib.colors import Normalize
 import numpy as np
 
 # import custom class
-from StateSpace import stateSpace, create_cmap, build_donut, build_snake
+from RandomLoop import stateSpace, create_cmap
 
 #plt.style.use("dark_background")
 plt.style.use("dark_background")
@@ -23,7 +23,7 @@ def generate_plot(num_colors, grid_size, beta, steps):
         fig, ax = plt.subplots(figsize = (16,12))
         # create colormap
         num_segments = int(m.max_links()[c]+1)
-        cmap = create_cmap(c, num_segments)
+        cmap = create_cmap(m.num_colors, c, num_segments)
         norm = Normalize(vmin=0, vmax=num_segments)
         sm = ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])  
@@ -84,7 +84,7 @@ def get_frame(i, ax, m, max_links):
     
     for c in range(m.num_colors):
         # Placeholder for cmap creation logic
-        cmap = create_cmap(c, max_links[c])  # Example colormap, replace with actual logic
+        cmap = create_cmap(m.num_colors, c, max_links[c]) 
         lc = plot_one_optimized(m.data['get_grid'][i], c, cmap, ax, 0.6)
         artists.append(lc)
         
@@ -101,22 +101,18 @@ def generate_animation(num_colors, grid_size, beta, steps, sample_rate, normaliz
         plt.style.use("default")
 
     # run it 
-    m = stateSpace(num_colors, grid_size, beta)
-    if initial_state == 'snake':
-        build_snake(m)
-    elif initial_state == 'donut':
-        build_donut(m)
-    elif initial_state == 'random':
-        m.random_init()    
+    if initial_state == 'zero':
+        initial_state = 0
+    m = stateSpace(num_colors, grid_size, beta, init=initial_state)
         
-    m.step(steps, sample_rate= 1_000, observables = [m.get_grid])
+    m.step(num_steps=steps, sample_rate=sample_rate, observables=[m.get_grid])
     
     max_links = np.max(m.data['get_grid'], axis = (0, 2, 3, 4)) if not normalize else [2,2,2]
     
-    fig, ax = plt.subplots(figsize=(12, 12))
+    fig, ax = plt.subplots(figsize=(16, 16))
 
     # adjust the range and interval based on your data and desired animation speed
-    animation = FuncAnimation(fig, get_frame, frames=len(m.data['get_grid']), interval=50, repeat=False, blit = True, fargs = [ax, m, max_links])
+    animation = FuncAnimation(fig, get_frame, frames=len(m.data['get_grid']), repeat=False, blit = True, fargs = [ax, m, max_links])
 
     # Display the animation in the notebook
     return animation.to_html5_video()

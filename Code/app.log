@@ -62,3 +62,411 @@
 2024-02-28 13:04:50,905 - root - INFO - acceptance_prob_optimized executed in 5800.00 ns, average execution time: 9599.80955556 ns over 1800000 call(s)
 2024-02-28 13:04:53,164 - root - INFO - acceptance_prob_optimized executed in 7300.00 ns, average execution time: 9422.36805263 ns over 1900000 call(s)
 2024-02-28 13:04:55,414 - root - INFO - acceptance_prob_optimized executed in 4200.00 ns, average execution time: 9264.25820000 ns over 2000000 call(s)
+2024-02-28 17:38:40,457 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:38:40,461 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:38:40,495 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:38:41,225 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:38:41,721 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:38:43,434 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:38:45,927 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:40:43,943 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:40:43,975 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:40:43,983 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:40:44,641 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:40:45,223 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:41:00,126 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:41:02,184 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:42:02,670 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:42:02,691 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:42:02,926 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:42:03,464 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:42:04,061 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:42:05,647 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:42:07,666 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:42:27,650 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:42:27,651 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpawz5kfok\temp.m4v'
+2024-02-28 17:42:44,559 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:42:44,560 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpu60qskua\temp.m4v'
+2024-02-28 17:43:04,347 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:43:04,348 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp09fn0dbc\temp.m4v'
+2024-02-28 17:43:54,869 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:43:54,869 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpi7pw1m_m\temp.m4v'
+2024-02-28 17:44:58,089 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:44:58,104 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:44:58,179 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:44:58,815 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:44:59,300 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:45:01,469 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:45:03,472 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:45:53,401 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:45:53,401 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpxq3lzge0\temp.m4v'
+2024-02-28 17:48:57,708 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:48:57,723 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:48:57,806 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:48:58,461 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:48:58,983 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:49:01,063 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:49:03,139 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:49:22,188 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:49:22,189 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp4yxjffm6\temp.m4v'
+2024-02-28 17:49:57,067 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:49:57,067 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp9purokd4\temp.m4v'
+2024-02-28 17:50:16,974 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:50:16,975 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x1200 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp60k1ugqo\temp.m4v'
+2024-02-28 17:52:53,039 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:52:53,053 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:52:53,138 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:52:53,795 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:52:54,303 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:52:56,501 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:52:58,584 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:53:59,259 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:53:59,273 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:53:59,348 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:53:59,980 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:54:00,511 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:54:07,225 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:54:09,253 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:54:28,057 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:54:28,057 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp8qktnw0h\temp.m4v'
+2024-02-28 17:54:47,797 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:54:47,798 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp82f2kqsp\temp.m4v'
+2024-02-28 17:56:47,234 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:56:47,234 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmp9ihd55hh\temp.m4v'
+2024-02-28 17:57:13,401 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:57:13,402 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 20.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmproeluhvl\temp.m4v'
+2024-02-28 17:57:46,915 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 17:57:46,929 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 17:57:47,015 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 17:57:47,623 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 17:57:48,151 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 17:57:51,299 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 17:57:53,570 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 17:58:06,531 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 17:58:06,532 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpd9z8fp0b\temp.m4v'
+2024-02-28 18:00:20,714 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:00:21,166 - Comm - ERROR - Exception in comm_close for d79dbdef0af94646a9ee8d5b0aa2a58c
+Traceback (most recent call last):
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 277, in comm_close
+    comm.handle_close(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 146, in handle_close
+    self._close_callback(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 194, in _on_close
+    manager.clearup_closed()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 152, in clearup_closed
+    CloseEvent("close_event", self.canvas)._process()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backend_bases.py", line 1263, in _process
+    self.canvas.callbacks.process(self.name, self)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 309, in process
+    self.exception_handler(exc)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 96, in _exception_printer
+    raise exc
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 304, in process
+    func(*args, **kwargs)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\animation.py", line 916, in _stop
+    self.event_source.remove_callback(self._step)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'remove_callback'
+2024-02-28 18:00:21,184 - Comm - WARNING - No such comm: d79dbdef0af94646a9ee8d5b0aa2a58c
+2024-02-28 18:00:45,627 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:01:32,522 - matplotlib.animation - WARNING - Animation size has reached 21147952 bytes, exceeding the limit of 20971520.0. If you're sure you want a larger animation embedded, set the animation.embed_limit rc parameter to a larger value (in MB). This and further frames will be dropped.
+2024-02-28 18:04:31,972 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 18:04:31,989 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 18:04:32,051 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 18:04:32,665 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 18:04:33,225 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 18:04:34,553 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 18:04:36,592 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 18:04:51,810 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:06:08,834 - Comm - ERROR - Exception in comm_close for ac9bddac29914331b0653ec6f7dbae53
+Traceback (most recent call last):
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 277, in comm_close
+    comm.handle_close(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 146, in handle_close
+    self._close_callback(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 194, in _on_close
+    manager.clearup_closed()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 152, in clearup_closed
+    CloseEvent("close_event", self.canvas)._process()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backend_bases.py", line 1263, in _process
+    self.canvas.callbacks.process(self.name, self)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 309, in process
+    self.exception_handler(exc)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 96, in _exception_printer
+    raise exc
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 304, in process
+    func(*args, **kwargs)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\animation.py", line 916, in _stop
+    self.event_source.remove_callback(self._step)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'remove_callback'
+2024-02-28 18:06:08,836 - Comm - WARNING - No such comm: ac9bddac29914331b0653ec6f7dbae53
+2024-02-28 18:07:52,727 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:08:33,611 - matplotlib.animation - WARNING - Animation size has reached 20995065 bytes, exceeding the limit of 20971520.0. If you're sure you want a larger animation embedded, set the animation.embed_limit rc parameter to a larger value (in MB). This and further frames will be dropped.
+2024-02-28 18:11:37,318 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:12:16,630 - Comm - ERROR - Exception in comm_close for 29c45bc744364a409ccc658904f4e414
+Traceback (most recent call last):
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 277, in comm_close
+    comm.handle_close(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 146, in handle_close
+    self._close_callback(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 194, in _on_close
+    manager.clearup_closed()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 152, in clearup_closed
+    CloseEvent("close_event", self.canvas)._process()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backend_bases.py", line 1263, in _process
+    self.canvas.callbacks.process(self.name, self)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 309, in process
+    self.exception_handler(exc)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 96, in _exception_printer
+    raise exc
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 304, in process
+    func(*args, **kwargs)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\animation.py", line 916, in _stop
+    self.event_source.remove_callback(self._step)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'remove_callback'
+2024-02-28 18:12:16,634 - Comm - WARNING - No such comm: 29c45bc744364a409ccc658904f4e414
+2024-02-28 18:17:37,169 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:18:08,901 - Comm - ERROR - Exception in comm_close for 350b98c3530c4ec5ba6a136a4891b688
+Traceback (most recent call last):
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 277, in comm_close
+    comm.handle_close(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\comm\base_comm.py", line 146, in handle_close
+    self._close_callback(msg)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 194, in _on_close
+    manager.clearup_closed()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backends\backend_nbagg.py", line 152, in clearup_closed
+    CloseEvent("close_event", self.canvas)._process()
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\backend_bases.py", line 1263, in _process
+    self.canvas.callbacks.process(self.name, self)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 309, in process
+    self.exception_handler(exc)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 96, in _exception_printer
+    raise exc
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\cbook\__init__.py", line 304, in process
+    func(*args, **kwargs)
+  File "C:\Users\lollo\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\matplotlib\animation.py", line 916, in _stop
+    self.event_source.remove_callback(self._step)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'remove_callback'
+2024-02-28 18:18:08,906 - Comm - WARNING - No such comm: 350b98c3530c4ec5ba6a136a4891b688
+2024-02-28 18:18:38,960 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 18:18:38,975 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 18:18:39,060 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 18:18:39,680 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 18:18:40,268 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 18:18:40,576 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 18:18:42,658 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 18:18:57,667 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.HTMLWriter'>
+2024-02-28 18:19:20,214 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/startup-events "HTTP/1.1 200 OK"
+2024-02-28 18:19:20,228 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+2024-02-28 18:19:20,305 - httpx - INFO - HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-02-28 18:19:20,947 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-02-28 18:19:21,445 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-initiated-analytics/ "HTTP/1.1 200 OK"
+2024-02-28 18:19:38,695 - httpx - INFO - HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-02-28 18:19:40,778 - httpx - INFO - HTTP Request: POST https://api.gradio.app/gradio-launched-telemetry/ "HTTP/1.1 200 OK"
+2024-02-28 18:19:58,464 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 18:19:58,465 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpr_yb0c9h\temp.m4v'
+2024-02-28 18:20:08,097 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 18:20:08,097 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpxe_07hfs\temp.m4v'
+2024-02-28 18:20:25,401 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 18:20:25,402 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpj7z299hn\temp.m4v'
+2024-02-28 18:21:04,303 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 18:21:04,304 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpwmirqcbj\temp.m4v'
+2024-02-28 18:21:33,194 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+2024-02-28 18:21:33,195 - matplotlib.animation - INFO - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1600x1600 -pix_fmt rgba -r 5.0 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y 'C:\Users\lollo\AppData\Local\Temp\tmpc7zsqixi\temp.m4v'
+2024-02-28 18:22:46,059 - Comm - WARNING - No such comm: 08476abf657c44d083442acfa7286de2
+2024-02-28 18:22:57,261 - Comm - WARNING - No such comm: 90996aa7fb4645e3af44ff901575c3d6
+2024-02-28 18:34:37,552 - root - INFO - acceptance_prob_old executed in 13000.00 ns, average execution time: 15562.92900000 ns over 100000 call(s)
+2024-02-28 18:34:40,504 - root - INFO - acceptance_prob_old executed in 12900.00 ns, average execution time: 15455.62950000 ns over 200000 call(s)
+2024-02-28 18:34:43,436 - root - INFO - acceptance_prob_old executed in 13600.00 ns, average execution time: 15379.75033333 ns over 300000 call(s)
+2024-02-28 18:34:46,396 - root - INFO - acceptance_prob_old executed in 13600.00 ns, average execution time: 15353.60400000 ns over 400000 call(s)
+2024-02-28 18:34:49,409 - root - INFO - acceptance_prob_old executed in 16900.00 ns, average execution time: 15407.74180000 ns over 500000 call(s)
+2024-02-28 18:34:52,447 - root - INFO - acceptance_prob_old executed in 13400.00 ns, average execution time: 15461.04250000 ns over 600000 call(s)
+2024-02-28 18:34:55,339 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 15277.14371429 ns over 700000 call(s)
+2024-02-28 18:34:58,166 - root - INFO - acceptance_prob_old executed in 12200.00 ns, average execution time: 15106.72700000 ns over 800000 call(s)
+2024-02-28 18:35:00,970 - root - INFO - acceptance_prob_old executed in 11800.00 ns, average execution time: 14963.62366667 ns over 900000 call(s)
+2024-02-28 18:35:03,856 - root - INFO - acceptance_prob_old executed in 12200.00 ns, average execution time: 14885.90670000 ns over 1000000 call(s)
+2024-02-28 18:35:06,724 - root - INFO - acceptance_prob_old executed in 32800.00 ns, average execution time: 14815.43536364 ns over 1100000 call(s)
+2024-02-28 18:35:09,591 - root - INFO - acceptance_prob_old executed in 12000.00 ns, average execution time: 14761.05175000 ns over 1200000 call(s)
+2024-02-28 18:35:12,725 - root - INFO - acceptance_prob_old executed in 13500.00 ns, average execution time: 14753.09423077 ns over 1300000 call(s)
+2024-02-28 18:35:15,901 - root - INFO - acceptance_prob_old executed in 13300.00 ns, average execution time: 14760.44914286 ns over 1400000 call(s)
+2024-02-28 18:35:18,963 - root - INFO - acceptance_prob_old executed in 3700.00 ns, average execution time: 14732.89800000 ns over 1500000 call(s)
+2024-02-28 18:35:22,017 - root - INFO - acceptance_prob_old executed in 4100.00 ns, average execution time: 14708.84025000 ns over 1600000 call(s)
+2024-02-28 18:35:24,897 - root - INFO - acceptance_prob_old executed in 13600.00 ns, average execution time: 14673.44823529 ns over 1700000 call(s)
+2024-02-28 18:35:27,805 - root - INFO - acceptance_prob_old executed in 13300.00 ns, average execution time: 14637.68900000 ns over 1800000 call(s)
+2024-02-28 18:35:30,473 - root - INFO - acceptance_prob_old executed in 11500.00 ns, average execution time: 14508.11131579 ns over 1900000 call(s)
+2024-02-28 18:35:33,131 - root - INFO - acceptance_prob_old executed in 11600.00 ns, average execution time: 14388.97245000 ns over 2000000 call(s)
+2024-02-28 18:35:35,758 - root - INFO - acceptance_prob_old executed in 11400.00 ns, average execution time: 14275.23571429 ns over 2100000 call(s)
+2024-02-28 18:35:38,432 - root - INFO - acceptance_prob_old executed in 12400.00 ns, average execution time: 14176.88263636 ns over 2200000 call(s)
+2024-02-28 18:35:41,064 - root - INFO - acceptance_prob_old executed in 18200.00 ns, average execution time: 14083.96517391 ns over 2300000 call(s)
+2024-02-28 18:35:43,663 - root - INFO - acceptance_prob_old executed in 11100.00 ns, average execution time: 13995.06304167 ns over 2400000 call(s)
+2024-02-28 18:35:46,575 - root - INFO - acceptance_prob_old executed in 12600.00 ns, average execution time: 13968.61968000 ns over 2500000 call(s)
+2024-02-28 18:35:49,455 - root - INFO - acceptance_prob_old executed in 13700.00 ns, average execution time: 13939.58065385 ns over 2600000 call(s)
+2024-02-28 18:35:52,347 - root - INFO - acceptance_prob_old executed in 13000.00 ns, average execution time: 13915.59970370 ns over 2700000 call(s)
+2024-02-28 18:35:55,245 - root - INFO - acceptance_prob_old executed in 12900.00 ns, average execution time: 13893.82078571 ns over 2800000 call(s)
+2024-02-28 18:35:58,151 - root - INFO - acceptance_prob_old executed in 21000.00 ns, average execution time: 13875.46806897 ns over 2900000 call(s)
+2024-02-28 18:36:00,991 - root - INFO - acceptance_prob_old executed in 13500.00 ns, average execution time: 13853.84713333 ns over 3000000 call(s)
+2024-02-28 18:36:03,541 - root - INFO - acceptance_prob_old executed in 10800.00 ns, average execution time: 13778.65270968 ns over 3100000 call(s)
+2024-02-28 18:36:06,069 - root - INFO - acceptance_prob_old executed in 11500.00 ns, average execution time: 13705.42378125 ns over 3200000 call(s)
+2024-02-28 18:36:08,620 - root - INFO - acceptance_prob_old executed in 12000.00 ns, average execution time: 13637.07460606 ns over 3300000 call(s)
+2024-02-28 18:36:11,135 - root - INFO - acceptance_prob_old executed in 11300.00 ns, average execution time: 13570.33355882 ns over 3400000 call(s)
+2024-02-28 18:36:13,671 - root - INFO - acceptance_prob_old executed in 10800.00 ns, average execution time: 13510.43897143 ns over 3500000 call(s)
+2024-02-28 18:36:16,180 - root - INFO - acceptance_prob_old executed in 18500.00 ns, average execution time: 13451.44225000 ns over 3600000 call(s)
+2024-02-28 18:36:19,035 - root - INFO - acceptance_prob_old executed in 13200.00 ns, average execution time: 13439.52967568 ns over 3700000 call(s)
+2024-02-28 18:36:21,882 - root - INFO - acceptance_prob_old executed in 13400.00 ns, average execution time: 13426.96571053 ns over 3800000 call(s)
+2024-02-28 18:36:24,729 - root - INFO - acceptance_prob_old executed in 13900.00 ns, average execution time: 13415.75700000 ns over 3900000 call(s)
+2024-02-28 18:36:27,396 - root - INFO - acceptance_prob_old executed in 12800.00 ns, average execution time: 13395.94770000 ns over 4000000 call(s)
+2024-02-28 18:36:30,053 - root - INFO - acceptance_prob_old executed in 12100.00 ns, average execution time: 13377.85002439 ns over 4100000 call(s)
+2024-02-28 18:36:32,694 - root - INFO - acceptance_prob_old executed in 13600.00 ns, average execution time: 13360.16092857 ns over 4200000 call(s)
+2024-02-28 18:36:35,216 - root - INFO - acceptance_prob_old executed in 11500.00 ns, average execution time: 13313.79488372 ns over 4300000 call(s)
+2024-02-28 18:36:37,702 - root - INFO - acceptance_prob_old executed in 11000.00 ns, average execution time: 13265.30879545 ns over 4400000 call(s)
+2024-02-28 18:36:40,268 - root - INFO - acceptance_prob_old executed in 12000.00 ns, average execution time: 13221.49904444 ns over 4500000 call(s)
+2024-02-28 18:36:42,753 - root - INFO - acceptance_prob_old executed in 11300.00 ns, average execution time: 13177.60765217 ns over 4600000 call(s)
+2024-02-28 18:36:45,249 - root - INFO - acceptance_prob_old executed in 11100.00 ns, average execution time: 13136.32027660 ns over 4700000 call(s)
+2024-02-28 18:36:47,730 - root - INFO - acceptance_prob_old executed in 13900.00 ns, average execution time: 13095.97560417 ns over 4800000 call(s)
+2024-02-28 18:36:50,582 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 13093.69877551 ns over 4900000 call(s)
+2024-02-28 18:36:53,389 - root - INFO - acceptance_prob_old executed in 13300.00 ns, average execution time: 13087.32140000 ns over 5000000 call(s)
+2024-02-28 18:36:56,179 - root - INFO - acceptance_prob_old executed in 3500.00 ns, average execution time: 13079.64519608 ns over 5100000 call(s)
+2024-02-28 18:36:58,994 - root - INFO - acceptance_prob_old executed in 12700.00 ns, average execution time: 13074.14415385 ns over 5200000 call(s)
+2024-02-28 18:37:01,728 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 13066.73058491 ns over 5300000 call(s)
+2024-02-28 18:37:04,338 - root - INFO - acceptance_prob_old executed in 12400.00 ns, average execution time: 13055.41298148 ns over 5400000 call(s)
+2024-02-28 18:37:06,866 - root - INFO - acceptance_prob_old executed in 11100.00 ns, average execution time: 13025.59440000 ns over 5500000 call(s)
+2024-02-28 18:37:09,347 - root - INFO - acceptance_prob_old executed in 11200.00 ns, average execution time: 12992.46412500 ns over 5600000 call(s)
+2024-02-28 18:37:11,854 - root - INFO - acceptance_prob_old executed in 11100.00 ns, average execution time: 12962.37235088 ns over 5700000 call(s)
+2024-02-28 18:37:14,376 - root - INFO - acceptance_prob_old executed in 11300.00 ns, average execution time: 12934.41770690 ns over 5800000 call(s)
+2024-02-28 18:37:17,236 - root - INFO - acceptance_prob_old executed in 11700.00 ns, average execution time: 12931.47432203 ns over 5900000 call(s)
+2024-02-28 18:37:19,732 - root - INFO - acceptance_prob_old executed in 10900.00 ns, average execution time: 12903.27683333 ns over 6000000 call(s)
+2024-02-28 18:37:22,760 - root - INFO - acceptance_prob_old executed in 27100.00 ns, average execution time: 12925.18137705 ns over 6100000 call(s)
+2024-02-28 18:37:25,566 - root - INFO - acceptance_prob_old executed in 12500.00 ns, average execution time: 12931.24909677 ns over 6200000 call(s)
+2024-02-28 18:37:28,219 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 12926.10296825 ns over 6300000 call(s)
+2024-02-28 18:37:30,867 - root - INFO - acceptance_prob_old executed in 20900.00 ns, average execution time: 12918.88206250 ns over 6400000 call(s)
+2024-02-28 18:37:33,505 - root - INFO - acceptance_prob_old executed in 20500.00 ns, average execution time: 12912.87801538 ns over 6500000 call(s)
+2024-02-28 18:37:36,110 - root - INFO - acceptance_prob_old executed in 11800.00 ns, average execution time: 12905.37989394 ns over 6600000 call(s)
+2024-02-28 18:37:38,608 - root - INFO - acceptance_prob_old executed in 11200.00 ns, average execution time: 12880.81850746 ns over 6700000 call(s)
+2024-02-28 18:37:41,103 - root - INFO - acceptance_prob_old executed in 11300.00 ns, average execution time: 12855.35600000 ns over 6800000 call(s)
+2024-02-28 18:37:43,576 - root - INFO - acceptance_prob_old executed in 18100.00 ns, average execution time: 12829.85646377 ns over 6900000 call(s)
+2024-02-28 18:37:46,086 - root - INFO - acceptance_prob_old executed in 10700.00 ns, average execution time: 12807.33291429 ns over 7000000 call(s)
+2024-02-28 18:37:48,594 - root - INFO - acceptance_prob_old executed in 18600.00 ns, average execution time: 12785.32963380 ns over 7100000 call(s)
+2024-02-28 18:37:51,050 - root - INFO - acceptance_prob_old executed in 17800.00 ns, average execution time: 12761.34490278 ns over 7200000 call(s)
+2024-02-28 18:37:53,878 - root - INFO - acceptance_prob_old executed in 3400.00 ns, average execution time: 12762.71065753 ns over 7300000 call(s)
+2024-02-28 18:37:56,609 - root - INFO - acceptance_prob_old executed in 13000.00 ns, average execution time: 12762.84683784 ns over 7400000 call(s)
+2024-02-28 18:37:59,217 - root - INFO - acceptance_prob_old executed in 3400.00 ns, average execution time: 12757.75630667 ns over 7500000 call(s)
+2024-02-28 18:38:01,819 - root - INFO - acceptance_prob_old executed in 12900.00 ns, average execution time: 12752.57690789 ns over 7600000 call(s)
+2024-02-28 18:38:04,424 - root - INFO - acceptance_prob_old executed in 12100.00 ns, average execution time: 12747.08541558 ns over 7700000 call(s)
+2024-02-28 18:38:07,036 - root - INFO - acceptance_prob_old executed in 20400.00 ns, average execution time: 12742.84923077 ns over 7800000 call(s)
+2024-02-28 18:38:09,530 - root - INFO - acceptance_prob_old executed in 11400.00 ns, average execution time: 12724.03921519 ns over 7900000 call(s)
+2024-02-28 18:38:12,000 - root - INFO - acceptance_prob_old executed in 11000.00 ns, average execution time: 12703.59197500 ns over 8000000 call(s)
+2024-02-28 18:38:14,516 - root - INFO - acceptance_prob_old executed in 10800.00 ns, average execution time: 12684.14609877 ns over 8100000 call(s)
+2024-02-28 18:38:16,997 - root - INFO - acceptance_prob_old executed in 11200.00 ns, average execution time: 12665.28791463 ns over 8200000 call(s)
+2024-02-28 18:38:19,540 - root - INFO - acceptance_prob_old executed in 3100.00 ns, average execution time: 12650.02195181 ns over 8300000 call(s)
+2024-02-28 18:38:22,004 - root - INFO - acceptance_prob_old executed in 11000.00 ns, average execution time: 12631.21922619 ns over 8400000 call(s)
+2024-02-28 18:38:24,839 - root - INFO - acceptance_prob_old executed in 13000.00 ns, average execution time: 12634.89796471 ns over 8500000 call(s)
+2024-02-28 18:38:27,620 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 12634.78305814 ns over 8600000 call(s)
+2024-02-28 18:38:30,406 - root - INFO - acceptance_prob_old executed in 12600.00 ns, average execution time: 12634.73322989 ns over 8700000 call(s)
+2024-02-28 18:38:33,225 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 12636.21628409 ns over 8800000 call(s)
+2024-02-28 18:38:35,939 - root - INFO - acceptance_prob_old executed in 12400.00 ns, average execution time: 12635.68908989 ns over 8900000 call(s)
+2024-02-28 18:38:38,527 - root - INFO - acceptance_prob_old executed in 12300.00 ns, average execution time: 12632.18538889 ns over 9000000 call(s)
+2024-02-28 18:38:41,037 - root - INFO - acceptance_prob_old executed in 11300.00 ns, average execution time: 12618.06520879 ns over 9100000 call(s)
+2024-02-28 18:38:43,572 - root - INFO - acceptance_prob_old executed in 3500.00 ns, average execution time: 12604.31713043 ns over 9200000 call(s)
+2024-02-28 18:38:46,087 - root - INFO - acceptance_prob_old executed in 10700.00 ns, average execution time: 12590.05813978 ns over 9300000 call(s)
+2024-02-28 18:38:48,562 - root - INFO - acceptance_prob_old executed in 11400.00 ns, average execution time: 12574.13670213 ns over 9400000 call(s)
+2024-02-28 18:38:51,033 - root - INFO - acceptance_prob_old executed in 11100.00 ns, average execution time: 12558.49175789 ns over 9500000 call(s)
+2024-02-28 18:38:53,482 - root - INFO - acceptance_prob_old executed in 11000.00 ns, average execution time: 12542.39948958 ns over 9600000 call(s)
+2024-02-28 18:40:14,476 - root - INFO - acceptance_prob executed in 13800.00 ns, average execution time: 14766.50400000 ns over 100000 call(s)
+2024-02-28 18:40:17,398 - root - INFO - acceptance_prob executed in 13000.00 ns, average execution time: 14156.72700000 ns over 200000 call(s)
+2024-02-28 18:40:20,375 - root - INFO - acceptance_prob executed in 27800.00 ns, average execution time: 14145.04266667 ns over 300000 call(s)
+2024-02-28 18:40:23,227 - root - INFO - acceptance_prob executed in 24700.00 ns, average execution time: 14063.30550000 ns over 400000 call(s)
+2024-02-28 18:40:26,068 - root - INFO - acceptance_prob executed in 13400.00 ns, average execution time: 14016.70360000 ns over 500000 call(s)
+2024-02-28 18:40:28,851 - root - INFO - acceptance_prob executed in 12400.00 ns, average execution time: 13929.24383333 ns over 600000 call(s)
+2024-02-28 18:40:31,682 - root - INFO - acceptance_prob executed in 12500.00 ns, average execution time: 13882.42000000 ns over 700000 call(s)
+2024-02-28 18:40:34,339 - root - INFO - acceptance_prob executed in 3500.00 ns, average execution time: 13674.61300000 ns over 800000 call(s)
+2024-02-28 18:40:36,963 - root - INFO - acceptance_prob executed in 10900.00 ns, average execution time: 13497.66066667 ns over 900000 call(s)
+2024-02-28 18:40:39,580 - root - INFO - acceptance_prob executed in 12100.00 ns, average execution time: 13352.75720000 ns over 1000000 call(s)
+2024-02-28 18:40:42,214 - root - INFO - acceptance_prob executed in 19900.00 ns, average execution time: 13231.74100000 ns over 1100000 call(s)
+2024-02-28 18:40:44,813 - root - INFO - acceptance_prob executed in 12100.00 ns, average execution time: 13128.92308333 ns over 1200000 call(s)
+2024-02-28 18:40:47,728 - root - INFO - acceptance_prob executed in 13200.00 ns, average execution time: 13148.42269231 ns over 1300000 call(s)
+2024-02-28 18:40:50,609 - root - INFO - acceptance_prob executed in 13800.00 ns, average execution time: 13153.25271429 ns over 1400000 call(s)
+2024-02-28 18:40:53,500 - root - INFO - acceptance_prob executed in 20300.00 ns, average execution time: 13158.19166667 ns over 1500000 call(s)
+2024-02-28 18:40:56,395 - root - INFO - acceptance_prob executed in 13400.00 ns, average execution time: 13163.64781250 ns over 1600000 call(s)
+2024-02-28 18:40:59,245 - root - INFO - acceptance_prob executed in 11900.00 ns, average execution time: 13164.10488235 ns over 1700000 call(s)
+2024-02-28 18:41:01,932 - root - INFO - acceptance_prob executed in 4500.00 ns, average execution time: 13150.74816667 ns over 1800000 call(s)
+2024-02-28 18:41:04,524 - root - INFO - acceptance_prob executed in 18100.00 ns, average execution time: 13077.07026316 ns over 1900000 call(s)
+2024-02-28 18:41:07,073 - root - INFO - acceptance_prob executed in 11400.00 ns, average execution time: 13001.28110000 ns over 2000000 call(s)
+2024-02-28 18:41:09,623 - root - INFO - acceptance_prob executed in 10900.00 ns, average execution time: 12932.37342857 ns over 2100000 call(s)
+2024-02-28 18:41:12,165 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12868.30431818 ns over 2200000 call(s)
+2024-02-28 18:41:14,778 - root - INFO - acceptance_prob executed in 11200.00 ns, average execution time: 12816.39552174 ns over 2300000 call(s)
+2024-02-28 18:41:17,314 - root - INFO - acceptance_prob executed in 11600.00 ns, average execution time: 12762.61912500 ns over 2400000 call(s)
+2024-02-28 18:41:20,179 - root - INFO - acceptance_prob executed in 13500.00 ns, average execution time: 12775.52432000 ns over 2500000 call(s)
+2024-02-28 18:41:23,014 - root - INFO - acceptance_prob executed in 13000.00 ns, average execution time: 12780.97238462 ns over 2600000 call(s)
+2024-02-28 18:41:25,830 - root - INFO - acceptance_prob executed in 12300.00 ns, average execution time: 12782.81418519 ns over 2700000 call(s)
+2024-02-28 18:41:28,658 - root - INFO - acceptance_prob executed in 3700.00 ns, average execution time: 12786.63028571 ns over 2800000 call(s)
+2024-02-28 18:41:31,489 - root - INFO - acceptance_prob executed in 13500.00 ns, average execution time: 12790.62741379 ns over 2900000 call(s)
+2024-02-28 18:41:34,124 - root - INFO - acceptance_prob executed in 12000.00 ns, average execution time: 12783.78183333 ns over 3000000 call(s)
+2024-02-28 18:41:36,642 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12737.01432258 ns over 3100000 call(s)
+2024-02-28 18:41:39,123 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12690.08787500 ns over 3200000 call(s)
+2024-02-28 18:41:41,607 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12646.27606061 ns over 3300000 call(s)
+2024-02-28 18:41:44,086 - root - INFO - acceptance_prob executed in 11600.00 ns, average execution time: 12604.05414706 ns over 3400000 call(s)
+2024-02-28 18:41:46,567 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12563.87862857 ns over 3500000 call(s)
+2024-02-28 18:41:49,027 - root - INFO - acceptance_prob executed in 10900.00 ns, average execution time: 12524.08347222 ns over 3600000 call(s)
+2024-02-28 18:41:51,850 - root - INFO - acceptance_prob executed in 20600.00 ns, average execution time: 12533.13427027 ns over 3700000 call(s)
+2024-02-28 18:41:54,638 - root - INFO - acceptance_prob executed in 12700.00 ns, average execution time: 12537.09642105 ns over 3800000 call(s)
+2024-02-28 18:41:57,525 - root - INFO - acceptance_prob executed in 13300.00 ns, average execution time: 12551.24315385 ns over 3900000 call(s)
+2024-02-28 18:42:00,329 - root - INFO - acceptance_prob executed in 12400.00 ns, average execution time: 12556.23125000 ns over 4000000 call(s)
+2024-02-28 18:42:02,989 - root - INFO - acceptance_prob executed in 12100.00 ns, average execution time: 12557.74580488 ns over 4100000 call(s)
+2024-02-28 18:42:05,628 - root - INFO - acceptance_prob executed in 15600.00 ns, average execution time: 12558.06990476 ns over 4200000 call(s)
+2024-02-28 18:42:08,137 - root - INFO - acceptance_prob executed in 18100.00 ns, average execution time: 12529.41916279 ns over 4300000 call(s)
+2024-02-28 18:42:10,621 - root - INFO - acceptance_prob executed in 11100.00 ns, average execution time: 12499.29809091 ns over 4400000 call(s)
+2024-02-28 18:42:13,098 - root - INFO - acceptance_prob executed in 11400.00 ns, average execution time: 12470.03508889 ns over 4500000 call(s)
+2024-02-28 18:42:15,562 - root - INFO - acceptance_prob executed in 3000.00 ns, average execution time: 12440.46076087 ns over 4600000 call(s)
+2024-02-28 18:42:18,142 - root - INFO - acceptance_prob executed in 10500.00 ns, average execution time: 12415.83129787 ns over 4700000 call(s)
+2024-02-28 18:42:20,574 - root - INFO - acceptance_prob executed in 11400.00 ns, average execution time: 12386.01250000 ns over 4800000 call(s)
+2024-02-28 18:42:23,382 - root - INFO - acceptance_prob executed in 12400.00 ns, average execution time: 12395.03416327 ns over 4900000 call(s)
+2024-02-28 18:42:26,141 - root - INFO - acceptance_prob executed in 13200.00 ns, average execution time: 12398.30464000 ns over 5000000 call(s)
+2024-02-28 18:42:28,900 - root - INFO - acceptance_prob executed in 3300.00 ns, average execution time: 12401.17788235 ns over 5100000 call(s)
+2024-02-28 18:42:31,653 - root - INFO - acceptance_prob executed in 12900.00 ns, average execution time: 12403.86721154 ns over 5200000 call(s)
+2024-02-28 18:42:34,459 - root - INFO - acceptance_prob executed in 3200.00 ns, average execution time: 12410.18126415 ns over 5300000 call(s)
+2024-02-28 18:42:37,193 - root - INFO - acceptance_prob executed in 20500.00 ns, average execution time: 12411.72788889 ns over 5400000 call(s)
+2024-02-28 18:42:39,732 - root - INFO - acceptance_prob executed in 11400.00 ns, average execution time: 12391.69183636 ns over 5500000 call(s)
+2024-02-28 18:42:42,186 - root - INFO - acceptance_prob executed in 11200.00 ns, average execution time: 12367.26580357 ns over 5600000 call(s)
+2024-02-28 18:42:44,645 - root - INFO - acceptance_prob executed in 17800.00 ns, average execution time: 12344.05329825 ns over 5700000 call(s)
+2024-02-28 18:42:47,107 - root - INFO - acceptance_prob executed in 13200.00 ns, average execution time: 12321.83196552 ns over 5800000 call(s)
+2024-02-28 18:42:49,606 - root - INFO - acceptance_prob executed in 3000.00 ns, average execution time: 12303.08761017 ns over 5900000 call(s)
+2024-02-28 18:42:52,045 - root - INFO - acceptance_prob executed in 3100.00 ns, average execution time: 12280.71543333 ns over 6000000 call(s)
+2024-02-28 18:42:54,855 - root - INFO - acceptance_prob executed in 12900.00 ns, average execution time: 12289.72657377 ns over 6100000 call(s)
+2024-02-28 18:42:57,613 - root - INFO - acceptance_prob executed in 21000.00 ns, average execution time: 12293.75932258 ns over 6200000 call(s)
+2024-02-28 18:43:00,424 - root - INFO - acceptance_prob executed in 12800.00 ns, average execution time: 12301.47309524 ns over 6300000 call(s)
+2024-02-28 18:43:03,194 - root - INFO - acceptance_prob executed in 13000.00 ns, average execution time: 12306.35895312 ns over 6400000 call(s)
+2024-02-28 18:43:05,944 - root - INFO - acceptance_prob executed in 3200.00 ns, average execution time: 12309.67807692 ns over 6500000 call(s)
+2024-02-28 18:43:08,683 - root - INFO - acceptance_prob executed in 20800.00 ns, average execution time: 12312.52575758 ns over 6600000 call(s)
+2024-02-28 18:43:11,294 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12298.57983582 ns over 6700000 call(s)
+2024-02-28 18:43:13,757 - root - INFO - acceptance_prob executed in 13400.00 ns, average execution time: 12280.47254412 ns over 6800000 call(s)
+2024-02-28 18:43:16,221 - root - INFO - acceptance_prob executed in 11900.00 ns, average execution time: 12263.04062319 ns over 6900000 call(s)
+2024-02-28 18:43:18,681 - root - INFO - acceptance_prob executed in 17900.00 ns, average execution time: 12245.60048571 ns over 7000000 call(s)
+2024-02-28 18:43:21,140 - root - INFO - acceptance_prob executed in 10900.00 ns, average execution time: 12228.86495775 ns over 7100000 call(s)
+2024-02-28 18:43:23,584 - root - INFO - acceptance_prob executed in 3100.00 ns, average execution time: 12212.01272222 ns over 7200000 call(s)
+2024-02-28 18:43:26,379 - root - INFO - acceptance_prob executed in 3200.00 ns, average execution time: 12219.59382192 ns over 7300000 call(s)
+2024-02-28 18:43:29,138 - root - INFO - acceptance_prob executed in 12300.00 ns, average execution time: 12224.24316216 ns over 7400000 call(s)
+2024-02-28 18:43:31,894 - root - INFO - acceptance_prob executed in 12500.00 ns, average execution time: 12228.14992000 ns over 7500000 call(s)
+2024-02-28 18:43:34,652 - root - INFO - acceptance_prob executed in 3000.00 ns, average execution time: 12232.02064474 ns over 7600000 call(s)
+2024-02-28 18:43:37,402 - root - INFO - acceptance_prob executed in 23400.00 ns, average execution time: 12235.55076623 ns over 7700000 call(s)
+2024-02-28 18:43:40,018 - root - INFO - acceptance_prob executed in 12400.00 ns, average execution time: 12238.40216667 ns over 7800000 call(s)
+2024-02-28 18:43:42,516 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12226.52767089 ns over 7900000 call(s)
+2024-02-28 18:43:44,971 - root - INFO - acceptance_prob executed in 11100.00 ns, average execution time: 12211.55433750 ns over 8000000 call(s)
+2024-02-28 18:43:47,486 - root - INFO - acceptance_prob executed in 11100.00 ns, average execution time: 12200.26818519 ns over 8100000 call(s)
+2024-02-28 18:43:49,999 - root - INFO - acceptance_prob executed in 10700.00 ns, average execution time: 12189.17392683 ns over 8200000 call(s)
+2024-02-28 18:43:52,484 - root - INFO - acceptance_prob executed in 18100.00 ns, average execution time: 12175.58128916 ns over 8300000 call(s)
+2024-02-28 18:43:54,919 - root - INFO - acceptance_prob executed in 11100.00 ns, average execution time: 12161.32471429 ns over 8400000 call(s)
+2024-02-28 18:43:57,712 - root - INFO - acceptance_prob executed in 12600.00 ns, average execution time: 12168.29045882 ns over 8500000 call(s)
+2024-02-28 18:44:00,483 - root - INFO - acceptance_prob executed in 12500.00 ns, average execution time: 12173.18988372 ns over 8600000 call(s)
+2024-02-28 18:44:03,228 - root - INFO - acceptance_prob executed in 3300.00 ns, average execution time: 12176.56559770 ns over 8700000 call(s)
+2024-02-28 18:44:05,968 - root - INFO - acceptance_prob executed in 12400.00 ns, average execution time: 12179.51253409 ns over 8800000 call(s)
+2024-02-28 18:44:08,710 - root - INFO - acceptance_prob executed in 12600.00 ns, average execution time: 12182.58947191 ns over 8900000 call(s)
+2024-02-28 18:44:11,329 - root - INFO - acceptance_prob executed in 11800.00 ns, average execution time: 12183.02650000 ns over 9000000 call(s)
+2024-02-28 18:44:13,851 - root - INFO - acceptance_prob executed in 3100.00 ns, average execution time: 12173.23971429 ns over 9100000 call(s)
+2024-02-28 18:44:16,338 - root - INFO - acceptance_prob executed in 17500.00 ns, average execution time: 12162.04548913 ns over 9200000 call(s)
+2024-02-28 18:44:18,846 - root - INFO - acceptance_prob executed in 11000.00 ns, average execution time: 12151.88790323 ns over 9300000 call(s)
+2024-02-28 18:44:21,299 - root - INFO - acceptance_prob executed in 10500.00 ns, average execution time: 12139.59810638 ns over 9400000 call(s)
+2024-02-28 18:44:23,749 - root - INFO - acceptance_prob executed in 10600.00 ns, average execution time: 12127.35781053 ns over 9500000 call(s)
+2024-02-28 18:44:26,210 - root - INFO - acceptance_prob executed in 10700.00 ns, average execution time: 12114.85517708 ns over 9600000 call(s)
