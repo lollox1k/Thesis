@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from tqdm.auto import trange, tqdm
-import time
-import logging
-from functools import wraps
+
 from numba import jit
+from itertools import cycle
 
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import LineCollection
+from matplotlib.animation import FuncAnimation
 
 
 """
@@ -23,8 +23,9 @@ The class also includes methods for saving and loading the state of the simulati
 #################### global variables ########################
 
 GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar colors, big gap with the background, GAMMA = 1 means the gradient is linear which cause low visibility sometimes
-plt.style.use("dark_background")  # set dark background as default style
 
+plt.style.use("dark_background")  # set dark background as default style
+plt.rcParams['animation.embed_limit'] = 100 # Set the limit to 100 MB (default is 21 MB)
 
 # How the grid id saved.
 #
@@ -473,26 +474,38 @@ class stateSpace:
         ax.add_collection(lc)
         return lc
 
-    def plot_loop(self, c, loop, color = 'yellow', alpha = 0.25, linewidth = 1.5): 
+    def plot_loop(self, c, loop, colors = None, alpha = 0.25, linewidth = 1.5): 
         """
         Highlights a loop in a given color c.
 
         Args:
           c: The color for which to plot.
-          loop: The loop to be plotted.
+          loop: The loop(s) to be plotted.
           color: The color to be used for plotting the loop. Default is yellow
           alpha: The transparency level for the plot.
           linewidth: The width of the lines in the plot.
         """
+        if type(loop[0]) ==  tuple:
+            loop = [loop] 
+            
+        if colors == None:
+            colors = cycle([plt.cm.Set3(i) for i in range(12)])
+        
         fig, ax = plt.subplots(figsize=(12,12))
         num_segments = int(self.max_links()[c]+1)            #color dependet!
         cmap = create_cmap(self.num_colors, c, num_segments)
         self.plot_one_color(c, cmap, ax)
-        for i in range(len(loop)-1):
-            ax.plot( [loop[i][0], loop[i+1][0]], [loop[i][1], loop[i+1][1]], linewidth=linewidth, color = color, alpha = alpha)
-        #draw last link
-        ax.plot( [loop[0][0], loop[-1][0]], [loop[0][1], loop[-1][1]], linewidth=1.5, color = color, alpha = alpha)
-        ax.set_title('length = {}'.format(len(loop)))
+        
+         
+        for l in loop:
+            color = next(colors)
+            for i in range(len(l)-1):
+                ax.plot( [l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]], linewidth=linewidth, color = color, alpha = alpha)
+            #draw last link
+            ax.plot( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]], linewidth=linewidth, color = color, alpha = alpha, label = 'length = {}'.format(len(l)))
+        #ax.set_title('length = {}'.format(len(loop)))
+        ax.legend()
+        plt.show()
         
     def plot_grid(self, figsize = (10,8), linewidth = 1.0, colorbar = True, file_name = None):
         """
@@ -581,7 +594,58 @@ class stateSpace:
         if file_name != None:
             plt.savefig(file_name)
         plt.show()
+        
+    def animate(self, frames = None, normalized=False, alpha = 1, linewidth=1):
+
+        fig, ax = plt.subplots(figsize=(12, 12))
+        
+        # compute avg links at the end for an approximation of max links, to show a coerent cmap across all the animation
+        max_links = np.ceil( 2 + 3 * self.avg_links()).astype(int)
+        if normalized: 
+                num_segments = [2]*self.num_colors 
+        else:
+            num_segments = max_links
     
+        # frame update function
+        def get_frame(i):
+            
+            ax.clear()
+            ax.set_title('step {}'.format(i * self.sample_rate))
+            
+            for c in range(self.num_colors):
+                cmap = create_cmap(self.num_colors, c, num_segments[c])  
+                # Initialize lists to collect line segments
+                segments = []
+
+                # Collect line segments for horizontal and vertical lines
+                for x in range(self.grid_size):
+                    for y in range(self.grid_size):
+                        # horizontal lines
+                        if self.data['get_grid'][i][c][x][y][0] != 0:
+                            segments.append([(x - 1, y), (x, y)])
+                        # vertical lines
+                        if self.data['get_grid'][i][c][x][y][1] != 0:
+                            segments.append([(x, y), (x, y - 1)])
+
+                # Assuming colors are normalized between 0 and 1, adjust as needed
+                line_colors = [cmap(self.data['get_grid'][i][c][x][y][z]) for x in range(self.grid_size) for y in range(self.grid_size) for z in range(2) if self.data['get_grid'][i][c][x][y][z] != 0]
+
+                # Create a LineCollection
+                lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
+                ax.add_collection(lc)
+        
+            ax.set_xlim(-0.05 * self.grid_size, self.grid_size * 1.05)
+            ax.set_ylim(-0.05 * self.grid_size, self.grid_size * 1.05)
+            ax.axis('off')
+            
+        if frames == None:
+            frames = len(self.data['get_grid'])
+            
+        # use matplotlib to create animation    
+        animation = FuncAnimation(fig, get_frame, frames=frames, interval=50, repeat=False, blit = True)
+        return animation
+
+
     def summary(self):
         """
         Print a summary of the current state of the grid.
@@ -618,6 +682,7 @@ class stateSpace:
         """
         with open(file_name, 'r') as file:
             self.data = json.load(file)
+        
             
             
     def build_donut(self):
@@ -749,7 +814,7 @@ def infer_style():
 #
 #########################################################################################################
 
-@jit(fastmath = True, nopython = True)
+@jit(fastmath=True, nopython=True, cache=True)
 def get_possible_transformations(S):
     """
     Return a list of all possible transformations for a given square S.
@@ -827,7 +892,7 @@ def get_possible_transformations(S):
 
     return transformations + [(1, 1, 1, 1), (2, 0, 0, 0), (0, 2, 0, 0), (0, 0, 2, 0), (0, 0, 0, 2)]   #add back always applicable transformations
 
-@jit(fastmath = True, nopython = True)
+@jit(fastmath=True, nopython=True, cache=True)
 def get_local_time(grid, num_colors, x, y):
         """
         Calculate the local time for a given square at position (x, y).
@@ -844,7 +909,7 @@ def get_local_time(grid, num_colors, x, y):
             local_time += grid[c, x, y, 0] + grid[c, x, y, 1] + grid[c, x, y + 1, 1] + grid[c, x + 1, y, 0]
         return local_time // 2
 
-@jit(fastmath = True, nopython = True)
+@jit(fastmath=True, nopython=True, cache=True)
 def get_local_time_i(grid, c, x, y):
     """
     Calculate the local time for a given square at position (x, y) for color c.
@@ -859,7 +924,7 @@ def get_local_time_i(grid, c, x, y):
     """
     return (grid[c, x, y, 0] + grid[c, x, y, 1] + grid[c, x, y + 1, 1] + grid[c, x + 1, y, 0] ) // 2
                        
-@jit(fastmath = True, nopython = True)
+@jit(fastmath=True, nopython=True, cache=True)
 def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
     """
         Calculate the acceptance probability for a transformation X on a square s of color c.
