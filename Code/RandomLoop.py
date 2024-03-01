@@ -405,24 +405,22 @@ class StateSpace:
                     # pick a random dir with prob prop to num_links  
                     rand_dir = np.random.choice(dir)
                     
-                    match rand_dir:
-                        case 0:
-                            # remove one link
-                            G[x,y+1,1] -= 1
-                            #move there
-                            y += 1
-                        case 1:
-                            G[x+1,y,0] -= 1
-                            x += 1
-                        case 2:
-                            G[x,y,1] -= 1
-                            y -= 1
-                        case 3:
-                            G[x,y,0] -= 1
-                            x -= 1
-                        
+                    if rand_dir == 0:
+                        # remove one link
+                        G[x,y+1,1] -= 1
+                        #move there
+                        y += 1
+                    elif rand_dir == 1:
+                        G[x+1,y,0] -= 1
+                        x += 1
+                    elif rand_dir == 2:
+                        G[x,y,1] -= 1
+                        y -= 1
+                    elif rand_dir == 3:
+                        G[x,y,0] -= 1
+                        x -= 1
+                     
                 color_loops.append(current_loop)
-                color_lengths.append(length)
             loops.append(color_loops)
             lenghts.append(color_lengths)
         return loops, lenghts
