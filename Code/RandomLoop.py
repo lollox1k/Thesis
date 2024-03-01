@@ -81,7 +81,7 @@ def log_time(func):
 
 #################### class ########################
 
-class stateSpace:
+class StateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
     """
@@ -145,29 +145,26 @@ class stateSpace:
         """
        
         # add some info to the data dictionary
-        self.data['steps'] = num_steps
+        self.data['num_steps'] = self.data.get('num_steps', 0) + num_steps # if it's the first run, set the number of steps, otherwise add it.
         self.data['beta'] = self.beta
         self.data['grid_size'] = self.grid_size
         self.sample_rate = sample_rate
         
+        obs_is_dict = False 
+        
         if observables != None: 
             for ob in observables:
-                assert type(ob) == tuple or callable(ob), 'observables must be callable objects or tuples of the form (callable_obj, "label")'
-                if type(ob) == tuple:
-                    if ob[1] not in self.data:
-                        self.data[ob[1]] = []
+                if callable(ob):
+                    self.data.setdefault(ob.__name__, [])
                 else:
-                    if ob.__name__ not in self.data:  
-                        self.data[ob.__name__] = [] 
-   
+                    self.data.setdefault(ob, [])
+                    obs_is_dict = True
+                    
         for i in trange(num_steps, disable = not progress_bar):  
             # store data every sample_rate steps
             if i % sample_rate == 0 and observables != None:   
                 for ob in observables:
-                    if type(ob) == tuple:
-                        self.data[ob[1]].append(ob[0]()) 
-                    else:
-                        self.data[ob.__name__].append(ob())
+                        self.data[ob].append(observables[ob]()) if obs_is_dict else self.data[ob.__name__].append(ob())
 
             # choose a random color 
             c = np.random.randint(0, self.num_colors, dtype=int)
@@ -232,7 +229,7 @@ class stateSpace:
           A copy of the current state of the grid.
         """
         return np.copy(self.grid)
-
+    
     def get_local_time(self, x, y):
         """
         Calculate the local time for a given square at position (x, y).
@@ -313,12 +310,13 @@ class stateSpace:
         lenghts = []
         for c in range(self.num_colors):
             color_loops = []
+            color_lengths = []
             #copy the grid 
             G = np.copy(self.grid[c])
             nz = G.nonzero()
             non_zero = len(nz[0])
             if non_zero == 0:
-                    return [], [0]
+                    return [], [0,0,0]
             
             while non_zero > 0:
                 #pick first non-zero and unvisited edge
@@ -401,7 +399,7 @@ class stateSpace:
 
                     if (x,y) == starting_vertex:
                         if random.random() <= 1/(len(dir)+1):
-                            lenghts.append(length)
+                            color_lengths.append(length)
                             break
                     
                     # pick a random dir with prob prop to num_links  
@@ -424,8 +422,9 @@ class stateSpace:
                             x -= 1
                         
                 color_loops.append(current_loop)
-                
+                color_lengths.append(length)
             loops.append(color_loops)
+            lenghts.append(color_lengths)
         return loops, lenghts
     
     def avg_loop_length(self):
@@ -667,10 +666,13 @@ class stateSpace:
         print('average number of links: {}'.format(self.avg_links()))
         print('max number of links: {}'.format(self.max_links() ))
         print('avg local time: {}'.format(self.avg_local_time()))
-        loops, lengths = self.loop_builder() #stats on color 0
-
-        print('avg loop length: {}'.format(np.mean(lengths)))
-        print('max loop length: {}'.format(max(lengths)))
+        _, lengths = self.loop_builder() #stats on color 0
+        
+        avg_loop_lenghts = [np.mean(l) for l in lengths]
+        max_loop_lenghts = [np.max(l) for l in lengths]
+        
+        print('avg loop length: {}'.format(avg_loop_lenghts))
+        print('max loop length: {}'.format(max_loop_lenghts))
         steps = self.accepted + self.rejected
         if steps == 0:
             print('steps = {:g}   acceptance ratio = {:.6f}'.format(steps, 0))
@@ -684,11 +686,26 @@ class stateSpace:
         Args:
           file_name: The name of the file to save the data to.
         """
+
+        #self.data['num_colors'] = self.num_colors
+        #self.data['grid_size'] = self.grid_size
+        #self.data['beta'] = self.beta 
+        #self.data['algo'] = self.algo 
+        #self.data['sample_rate'] = self.sample_rate
+        
         # save the current state
         self.data['state'] = self.get_grid()
         
+        # save other attributes
+        for attr, value in vars(self).items():
+            if attr != 'data':
+                self.data[attr] = value 
+        
+        # transform every data element to list
+        #self.data = {key: list(value) for key, value in self.data.items()}
+
         with open(file_name, 'w') as file:
-            json.dump(self.data, file)
+            json.dump(self.data, file, cls=NumpyEncoder)
             
     def load_data(self, file_name):
         """
@@ -702,6 +719,15 @@ class stateSpace:
         # load state into the grid
         self.grid = np.array(self.data['state'])
         
+        for attr in vars(self):
+            if attr != 'data':
+                setattr(self, attr, self.data[attr])
+    
+    def clear_data(self):
+        """
+        Clears the data dictionary
+        """
+        self.data.clear()
             
             
     def build_donut(self):
@@ -822,8 +848,13 @@ def infer_style():
             return style_name
     return 'Default'
 
-
-
+class NumpyEncoder(json.JSONEncoder):
+    """ Custom encoder for numpy data types """
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()  # Convert ndarray to list
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
         
         
            
@@ -1023,6 +1054,6 @@ def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
 
 
 # since running @jit functions for the first time is slow, we do a step of the chain at import
-m = stateSpace(1, 10, 1)
+m = StateSpace(1, 10, 1)
 m.step(progress_bar=False)
 del m
