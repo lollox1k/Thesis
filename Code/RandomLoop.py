@@ -141,8 +141,9 @@ class stateSpace:
           num_steps: The number of steps to run the simulation for.
           progress_bar: Whether to show a progress bar during the simulation.
           sample_rate: The rate at which to sample observables during the simulation.
-          observables: A list of functions that calculate observables to be measured during the simulation.
+          observables: A list of functions or tuples of function and string that calculate observables to be measured during the simulation.
         """
+       
         # add some info to the data dictionary
         self.data['steps'] = num_steps
         self.data['beta'] = self.beta
@@ -151,14 +152,22 @@ class stateSpace:
         
         if observables != None: 
             for ob in observables:
-                if ob.__name__ not in self.data:  # if key not in dict, set it to empty list
-                    self.data[ob.__name__] = [] 
+                assert type(ob) == tuple or callable(ob), 'observables must be callable objects or tuples of the form (callable_obj, "label")'
+                if type(ob) == tuple:
+                    if ob[1] not in self.data:
+                        self.data[ob[1]] = []
+                else:
+                    if ob.__name__ not in self.data:  
+                        self.data[ob.__name__] = [] 
    
         for i in trange(num_steps, disable = not progress_bar):  
             # store data every sample_rate steps
             if i % sample_rate == 0 and observables != None:   
                 for ob in observables:
-                    self.data[ob.__name__].append(ob().tolist()) # necessary for m.get_grid
+                    if type(ob) == tuple:
+                        self.data[ob[1]].append(ob[0]()) 
+                    else:
+                        self.data[ob.__name__].append(ob())
 
             # choose a random color 
             c = np.random.randint(0, self.num_colors, dtype=int)
@@ -220,9 +229,9 @@ class stateSpace:
         Return the current state of the grid.
 
         Returns:
-          The current state of the grid.
+          A copy of the current state of the grid.
         """
-        return self.grid
+        return np.copy(self.grid)
 
     def get_local_time(self, x, y):
         """
@@ -323,6 +332,8 @@ class stateSpace:
                     x, y  = nz[0][rand_index], nz[1][rand_index]
                 else:
                     x, y = v1[0], v1[1]
+                    if (x,y) == v2:
+                        return 1
                     
                 starting_vertex = (x,y)
                 current_loop = []
@@ -596,7 +607,10 @@ class stateSpace:
         plt.show()
         
     def animate(self, frames = None, normalized=False, alpha = 1, linewidth=1):
-
+         
+         # first check if we have data
+        assert 'get_grid' in self.data, 'to generate an animation first sample the grid state using the method "get_grid"'
+            
         fig, ax = plt.subplots(figsize=(12, 12))
         
         # compute avg links at the end for an approximation of max links, to show a coerent cmap across all the animation
@@ -670,6 +684,9 @@ class stateSpace:
         Args:
           file_name: The name of the file to save the data to.
         """
+        # save the current state
+        self.data['state'] = self.get_grid()
+        
         with open(file_name, 'w') as file:
             json.dump(self.data, file)
             
@@ -682,6 +699,8 @@ class stateSpace:
         """
         with open(file_name, 'r') as file:
             self.data = json.load(file)
+        # load state into the grid
+        self.grid = np.array(self.data['state'])
         
             
             
