@@ -4,8 +4,13 @@ import numpy as np
 import random
 from tqdm.auto import trange, tqdm
 
-from numba import jit
+from numba import jit, int32, float32, typeof, int64
+from numba.experimental import jitclass
+
 from itertools import cycle
+import logging
+import time
+from functools import wraps
 
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
@@ -23,7 +28,6 @@ The class also includes methods for saving and loading the state of the simulati
 #################### global variables ########################
 
 GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar colors, big gap with the background, GAMMA = 1 means the gradient is linear which cause low visibility sometimes
-
 plt.style.use("dark_background")  # set dark background as default style
 plt.rcParams['animation.embed_limit'] = 100 # Set the limit to 100 MB (default is 21 MB)
 
@@ -49,7 +53,7 @@ plt.rcParams['animation.embed_limit'] = 100 # Set the limit to 100 MB (default i
 '''
 # set up logging to file
 logging.basicConfig(
-    filename='app.log', 
+    filename='performance.log', 
     level=logging.INFO, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
@@ -57,7 +61,7 @@ logging.basicConfig(
 
 def log_time(func):
     """
-    A decorator that logs the average time a function takes to execute in milliseconds.
+    A decorator that logs the mean time a function takes to execute in milliseconds.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -72,20 +76,38 @@ def log_time(func):
         elapsed_time_ns = end_time - start_time   # Calculate elapsed time in ns
         wrapper.total_time += elapsed_time_ns  # Accumulate total time
         wrapper.calls += 1  # Increment call count
-        average_time_ns = wrapper.total_time / wrapper.calls  # Calculate average time
+        mean_time_ns = wrapper.total_time / wrapper.calls  # Calculate mean time
         if wrapper.calls % 100_000 == 0:
-            logging.info(f"{func.__name__} executed in {elapsed_time_ns:.2f} ns, average execution time: {average_time_ns:.8f} ns over {wrapper.calls} call(s)")
+            logging.info(f"{func.__name__} executed in {elapsed_time_ns:.2f} ns, mean execution time: {mean:.8f} ns over {wrapper.calls} call(s)")
         return result
     return wrapper
 '''
 
 #################### class ########################
 
+class LCG:
+    def __init__(self, seed=1, a=1664525, c=1013904223, m=2**32):
+        self.state = seed
+        self.a = a
+        self.c = c
+        self.m = m
+
+    def random(self):
+        """Generate a pseudorandom number between 0 and 1."""
+        self.state = (self.a * self.state + self.c) % self.m
+        return self.state / self.m
+
+    def randint(self, low, high):
+        """Generate a pseudorandom integer between low (inclusive) and high (exclusive)."""
+        # Ensuring the random number falls within the specified range
+        return low + int(self.random() * (high - low))
+
+
 class StateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
     """
-    def __init__(self, num_colors, grid_size, beta, init = 0, bc = 0, algo = 'metropolis'): 
+    def __init__(self, num_colors, grid_size, beta, init=0, bc=0, algo='metropolis'): 
         """
         Initialize the state space with the given parameters.
 
@@ -99,20 +121,18 @@ class StateSpace:
         """
     
         self.grid_size = grid_size
-        self.V = grid_size**2
+        self.V = (grid_size-1)**2
         self.num_colors = num_colors
         self.beta = beta
         self.accepted = 0
         self.rejected = 0
         self.algo = algo
         self.sample_rate = 10_000
-        
+        self.stop = False
         self.data = {}  # dictionary to store data
-        
         self.shape = (num_colors, grid_size+2, grid_size+2, 2)  #the +2 is for free bc  we work only on vertices from  (1,grid_size+1)
-
         self.grid = 2*np.random.randint(0, 10, self.shape, dtype=int) if bc == 'random' else bc*np.ones(self.shape, dtype=int)
-
+        self.rng = [[] for _ in range(12)]
         # set the initial state
         if init == 'random':
             self.random_init()
@@ -133,7 +153,7 @@ class StateSpace:
     def uniform_init(self, k):
         self.grid[:, 1:-1, 1:-1, :] = k*np.ones((self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
         
-    def step(self, num_steps = 1, progress_bar = True, sample_rate = 10_000, observables = None): 
+    def step(self, num_steps = 1, progress_bar = True, sample_rate = 10_000, observables = None, perturb=False): 
         """
         Update the grid for a given number of steps.
 
@@ -150,58 +170,89 @@ class StateSpace:
         self.data['grid_size'] = self.grid_size
         self.sample_rate = sample_rate
         
-        obs_is_dict = False 
+        obs_is_dict = isinstance(observables, dict) 
         
-        if observables != None: 
+        if observables is not None: 
             for ob in observables:
                 if callable(ob):
+                    # Case where observables is a list of callable objects
                     self.data.setdefault(ob.__name__, [])
-                else:
+                elif isinstance(ob, str):
+                # New case: observables includes method names as strings
                     self.data.setdefault(ob, [])
-                    obs_is_dict = True
-                    
+                else:
+                    print(f'Observable {ob} is not valid.')
+        else:
+            observables = []
+        
+        # generate random numbers before looping to improve performance by x2.5 !!!
+        squares = np.random.randint(0, self.grid_size+1, size = (num_steps, 2), dtype=int) 
+        colors = np.random.randint(0, self.num_colors, size = num_steps, dtype=int)
+        indexs = [ np.random.randint(0, M+1, size = num_steps) for M in range(0, 13)]
+        
         for i in trange(num_steps, disable = not progress_bar):  
             # store data every sample_rate steps
-            if i % sample_rate == 0 and observables != None:   
+            if i % sample_rate == 0:   
                 for ob in observables:
-                        self.data[ob].append(observables[ob]()) if obs_is_dict else self.data[ob.__name__].append(ob())
-
+                    if obs_is_dict:
+                        # When observables is a dictionary
+                        self.data[ob].append(observables[ob]())
+                    elif callable(ob):
+                        # When observables is a list of callable objects
+                        self.data[ob.__name__].append(ob())
+                    elif isinstance(ob, str):
+                        # New case: When observables includes method names as strings
+                        method = getattr(self, ob)
+                        self.data[ob].append(method())
+                if self.stop: # flag to stop the chain 
+                    self.stop = False
+                    return None 
+                
             # choose a random color 
-            c = np.random.randint(0, self.num_colors, dtype=int)
+            c = colors[i]
          
             # choose a random square
-            s = np.random.randint(1, self.grid_size+1, size = 2, dtype=int)
+            s = squares[i] 
 
-            # get num_link on each side of square s
             S = np.zeros(4, dtype=int)
-            S[0] = self.grid[c, s[0], s[1], 0]
-            S[2] = self.grid[c, s[0], s[1]-1, 0]
-            S[1] = self.grid[c, s[0], s[1], 1]
-            S[3] = self.grid[c, s[0]-1, s[1], 1]
+            
+            # handle boundary cases 
+            if s[0] == 0:
+                if s[1] == 0:
+                    transformations = [(0,0,0,0)]
+                S[1] = self.grid[c, s[0], s[1], 1]
+                if S[1] >= 2:
+                    transformations = [(0, 2, 0, 0), (0, -2, 0, 0)]
+                else:
+                    transformations = [(0, 2, 0, 0)]
+                    
+            elif s[1] == 0:
+                S[0] = self.grid[c, s[0], s[1], 0]
+                if S[0] >= 2:
+                    transformations = [(2, 0, 0, 0), (-2, 0, 0, 0)]
+                else:
+                    transformations = [(2, 0, 0, 0)]
+            else:
+                # get links of color c on each side of square s
+                S[0] = self.grid[c, s[0], s[1], 0]
+                S[2] = self.grid[c, s[0], s[1]-1, 0]
+                S[1] = self.grid[c, s[0], s[1], 1]
+                S[3] = self.grid[c, s[0]-1, s[1], 1]
 
-            # get list of all possible transformation
-            transformations = get_possible_transformations(S)                    ############################ MINIMAL OR FULL ST ####################################
-            #transformations = self.minimal_transformations(S)
+                # get list of all possible transformation
+                transformations = get_possibile_transformations(S) 
             
             # pick uniformly a random transformation
             M = len(transformations)   # num of possible transformation of current state, compute only once! we also need it to compute tha ratio M/M_prime in acceptance_prob
-            index = np.random.randint(0, M)  
+            index = indexs[M-1][i] 
             X = transformations[index]
-            
-            '''
-            if self.acceptance_prob(S, M, s, X, c) >= random.random():          (S, M, s, X, c, beta, num_colors, algo, get_possible_transformations, get_local_time, get_local_time_i)
+           
+            if np.random.rand() <= acceptance_prob_optimized(S, M, s, X, c, self.beta, self.num_colors, self.grid):  
                 self.accepted += 1
                 self.square_transformation(c, s, X)
             else:
                 self.rejected += 1
-            '''
             
-            if acceptance_prob_optimized(S, M, s, X, c, self.beta, self.num_colors, self.algo, self.grid) >= random.random():  
-                self.accepted += 1
-                self.square_transformation(c, s, X)
-            else:
-                self.rejected += 1
-    
 
     def square_transformation(self, c, s, X):    # X = (a_1, a_2, a_3, a_4) like in the thesis
         """
@@ -267,30 +318,39 @@ class StateSpace:
         Returns:
           The maximum number of links for each color.
         """
-        return np.max(self.grid, axis=(1,2,3))
+        return np.max(self.grid[:, 1:-1, 1:-1, :], axis=(1,2,3))
     
-    def avg_links(self):
+    def mean_links(self):
         """
-        Return the average number of links for each color.
+        Return the mean number of links for each color.
 
         Returns:
-          The average number of links for each color.
+          The mean number of links for each color.
         """
-        return np.mean(self.grid, axis = (1,2,3))
-
-    def avg_local_time(self):
+        return np.mean(self.grid[:, 1:-1, 1:-1, :], axis = (1,2,3))
+    
+    def std_links(self):
         """
-        Return the average local time for the grid.
+        Return the mean number of links for each color.
 
         Returns:
-          The average local time for the grid.
+          The mean number of links for each color.
+        """
+        return np.std(self.grid[:, 1:-1, 1:-1, :], axis = (1,2,3))
+
+    def mean_local_time(self):
+        """
+        Return the mean local time for the grid.
+
+        Returns:
+          The mean local time for the grid.
         """
         total_local_time = 0
         for x in range(1,self.grid_size+1):
             for y in range(1,self.grid_size+1):
                 total_local_time += self.get_local_time(x,y)
         return total_local_time / self.V
-    
+
     def loop_builder(self, v1 = None, v2 = None):
         """
         Build loops for each color in the grid.
@@ -313,10 +373,14 @@ class StateSpace:
             color_lengths = []
             #copy the grid 
             G = np.copy(self.grid[c])
+            # set to zero in the boundary  
+            G[0, :, 0] = 0  
+            G[:, 0, 1] = 0
+           
             nz = G.nonzero()
             non_zero = len(nz[0])
             if non_zero == 0:
-                    return [], [0,0,0]
+                color_lengths.append(0)
             
             while non_zero > 0:
                 #pick first non-zero and unvisited edge
@@ -325,7 +389,7 @@ class StateSpace:
                 if non_zero == 0:
                     break
                 # choose a random vertex with non-zero incident links, or choose v1
-                if v1 == None:
+                if v1 is None:
                     rand_index = np.random.randint(0, non_zero)
                     x, y  = nz[0][rand_index], nz[1][rand_index]
                 else:
@@ -423,17 +487,48 @@ class StateSpace:
                 color_loops.append(current_loop)
             loops.append(color_loops)
             lenghts.append(color_lengths)
-        return loops, lenghts
+            
+        return (loops, lenghts) if v1 is None else 0
     
-    def avg_loop_length(self):
+    def compute_corr(self):
         """
-        Return the average loop length for the grid.
+        Checks if vertices of increasing distance are connected by a loop.
+
+        Returns: A list of 1 or 0 (1 if vertices are connected, 0 if not).
+        """
+        is_connected = []
+
+        # generate a random point, then find one at distance d
+
+        start_vertices = [tuple(np.random.randint(1, self.grid_size + 1, 2)) for _ in range(self.grid_size // 2 + 1)]
+        end_vertices = []
+        
+        for i in range(self.grid_size // 2 + 1):
+            if np.random.rand() <= 0.5: # vertical
+                if start_vertices[i][1] + i <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] + i) )
+                else:
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] - i) )
+            else: # horizontal
+                if start_vertices[i][0] + i <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0] + i, start_vertices[i][1]) )
+                else:
+                    end_vertices.append(  (start_vertices[i][0] - i, start_vertices[i][1]) )
+          
+        for i in range(self.grid_size // 2 + 1):
+            is_connected.append(check_connectivity(self.grid, self.num_colors, start_vertices[i], end_vertices[i]))
+
+        return is_connected
+    
+    def mean_loop_length(self):
+        """
+        Return the mean loop length for the grid.
 
         Returns:
-          The average loop length for the grid.
+          The mean loop length for the grid.
         """
         _, lengths = self.loop_builder()
-        return np.mean(lengths)
+        return [ sum(l) / len(l) for l in lengths]
                 
     def check_state(self):
         """
@@ -541,7 +636,6 @@ class StateSpace:
             sm.set_array([])  # Empty array, as we'll not use actual data
 
             self.plot_one_color(c, cmap, axes[c], linewidth=linewidth)
-            #axes[c].set_title('avg links = {}'.format(self.avg_links()[c]))
             axes[c].set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             axes[c].set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             #axes[c].axis('square')
@@ -603,15 +697,15 @@ class StateSpace:
             plt.savefig(file_name)
         plt.show()
         
-    def animate(self, frames = None, normalized=False, alpha = 1, linewidth=1):
+    def animate(self, frames = None, normalized=False, file_name=None, alpha = 1, linewidth=1):
          
          # first check if we have data
         assert 'get_grid' in self.data, 'to generate an animation first sample the grid state using the method "get_grid"'
             
         fig, ax = plt.subplots(figsize=(12, 12))
         
-        # compute avg links at the end for an approximation of max links, to show a coerent cmap across all the animation
-        max_links = np.ceil( 2 + 3 * self.avg_links()).astype(int)
+        # compute mean links at the end for an approximation of max links, to show a coerent cmap across all the animation
+        max_links = np.ceil( 2 + 3 * self.mean_links()).astype(int)
         if normalized: 
                 num_segments = [2]*self.num_colors 
         else:
@@ -622,10 +716,11 @@ class StateSpace:
             
             ax.clear()
             ax.set_title('step {}'.format(i * self.sample_rate))
+            # Initialize an empty list to collect the artists that are created/modified
+            artists = []
             
             for c in range(self.num_colors):
                 cmap = create_cmap(self.num_colors, c, num_segments[c])  
-                # Initialize lists to collect line segments
                 segments = []
 
                 # Collect line segments for horizontal and vertical lines
@@ -644,32 +739,36 @@ class StateSpace:
                 # Create a LineCollection
                 lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
                 ax.add_collection(lc)
-        
+
+                # Add the LineCollection to the list of artists to return
+                artists.append(lc)
+                
             ax.set_xlim(-0.05 * self.grid_size, self.grid_size * 1.05)
             ax.set_ylim(-0.05 * self.grid_size, self.grid_size * 1.05)
             ax.axis('off')
+            return artists
             
         if frames == None:
             frames = len(self.data['get_grid'])
             
         # use matplotlib to create animation    
         animation = FuncAnimation(fig, get_frame, frames=frames, interval=50, repeat=False, blit = True)
-        return animation
+        return animation if file_name is None else animation.save(file_name)
 
 
     def summary(self):
         """
         Print a summary of the current state of the grid.
         """
-        print('average number of links: {}'.format(self.avg_links()))
+        print('mean number of links: {}'.format(self.mean_links()))
         print('max number of links: {}'.format(self.max_links() ))
-        print('avg local time: {}'.format(self.avg_local_time()))
+        print('mean local time: {}'.format(self.mean_local_time()))
         _, lengths = self.loop_builder() #stats on color 0
         
-        avg_loop_lenghts = [np.mean(l) for l in lengths]
+        mean_loop_lenghts = [np.mean(l) for l in lengths]
         max_loop_lenghts = [np.max(l) for l in lengths]
         
-        print('avg loop length: {}'.format(avg_loop_lenghts))
+        print('mean loop length: {}'.format(mean_loop_lenghts))
         print('max loop length: {}'.format(max_loop_lenghts))
         steps = self.accepted + self.rejected
         if steps == 0:
@@ -690,10 +789,7 @@ class StateSpace:
         #self.data['beta'] = self.beta 
         #self.data['algo'] = self.algo 
         #self.data['sample_rate'] = self.sample_rate
-        
-        # save the current state
-        self.data['state'] = self.get_grid()
-        
+    
         # save other attributes
         for attr, value in vars(self).items():
             if attr != 'data':
@@ -715,10 +811,10 @@ class StateSpace:
         with open(file_name, 'r') as file:
             self.data = json.load(file)
         # load state into the grid
-        self.grid = np.array(self.data['state'])
+        self.grid = np.array(self.data['grid'])
         
         for attr in vars(self):
-            if attr != 'data':
+            if attr != 'data' and attr != 'grid':
                 setattr(self, attr, self.data[attr])
     
     def clear_data(self):
@@ -790,14 +886,9 @@ class StateSpace:
 
 def generate_rgb_colors(n):
     """
-    Generates n RGB colors in the form of (r, g, b) with r, g, b values in [0, 1].
-    For n = 3, it returns red, green, and blue. For other values of n, it aims to maximize
-    the perceptual difference between the colors, ensuring they are bright and vivid.
+    Generates n RGB colors in the form of (r, g, b) with r, g, b values in [0, 1],
+    maximizing the perceptual difference between the colors, ensuring they are bright and vivid.
     """
-    if n == 3:
-        # Directly return red, green, blue for n = 3
-        return [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
-    
     colors = []
     
     for i in range(n):
@@ -863,9 +954,41 @@ class NumpyEncoder(json.JSONEncoder):
 #########################################################################################################
 
 @jit(fastmath=True, nopython=True, cache=True)
-def get_possible_transformations(S):
+def get_possibile_transformations(S):
+    # Initialize the list with transformations that are always valid
+    transformations = [
+        (1, 1, 1, 1),  # U+
+        (2, 0, 0, 0),  # T+
+        (0, 2, 0, 0)   # R+
+    ]
+    
+    # Conditional transformations based on the state of S
+    if S[0] >= 2:
+        transformations.append((-2, 0, 0, 0))  # single top
+    if S[1] >= 2:
+        transformations.append((0, -2, 0, 0))  # single right
+    if S[0] > 0 and S[2] > 0:
+        transformations.append((-1, 1, -1, 1))  # swap top-bottom
+    if S[1] > 0 and S[3] > 0:
+        transformations.append((1, -1, 1, -1))  # swap right-left
+    if S[2] > 0 and S[3] > 0:
+        transformations.append((1, 1, -1, -1))  # increase top-right, decrease bottom-left
+    if S[0] > 0 and S[1] > 0:
+        transformations.append((-1, -1, 1, 1))  # increase bottom-left, decrease top-right
+    if S[0] > 0 and S[3] > 0:
+        transformations.append((-1, 1, 1, -1))  # rotate clockwise
+    if S[1] > 0 and S[2] > 0:
+        transformations.append((1, -1, -1, 1))  # rotate counter-clockwise
+    if np.all(S > 0):
+        transformations.append((-1, -1, -1, -1))  # uniform decrease
+    
+    return transformations
+
+
+@jit(fastmath=True, nopython=True, cache=True)
+def minimal_transformations(S): # x2 faster
     """
-    Return a list of all possible transformations for a given square S.
+    Return a list of just minimal transformations for a given square S.
 
     Args:
         S: The square for which to generate all possible transformations.
@@ -873,72 +996,18 @@ def get_possible_transformations(S):
     Returns:
         A list of all possible transformations for the given square.
     """
-    # list of all possible transformations
-
-    transformations = [ 
-        (-1,-1,-1,-1),                    # uniform                     
-        (-2, 0, 0, 0),                    # single top
-        (0, -2, 0, 0),                    # single right
-        (0, 0, -2, 0),                    # single bottom
-        (0, 0, 0, -2),                    # single left
-        (1,-1, 1,-1), (-1, 1,-1, 1),      # swap opposite
-        (1, 1,-1,-1), (-1,-1, 1, 1),      # swap adjacent
-        (-1, 1,1,-1), ( 1,-1,-1, 1)#,   
-        #(1,-1,-1,-1), (-1, 1, 1, 1),      # triple up
-        #(-1,1,-1,-1), ( 1,-1, 1, 1),      # triple right
-        #(-1,-1,1,-1), ( 1, 1,-1, 1),      # triple bottom
-        # (-1,-1,-1,1), ( 1, 1, 1,-1)       # triple left
-        ]    
     
-    if S[0] < 2:                                                # top is 0 or 1, remove single top -2
-        transformations.remove( (-2, 0, 0, 0) )
-        if S[0] == 0:                                           # top is 0, remove uniform -1, swap 
-            transformations.remove((-1, -1, -1, -1))
-            transformations.remove((-1, 1, -1, 1))
-            transformations.remove((-1, -1, 1, 1))
-            transformations.remove((-1, 1, 1, -1))
-            #transformations.remove((-1, 1, 1, 1))
-            #transformations.remove((-1, 1, -1, -1))
-            #transformations.remove((-1, -1, 1, -1))
-            #transformations.remove((-1, -1, -1, 1))
-    if S[1] < 2:
-        transformations.remove((0, -2, 0, 0))
-        if S[1] == 0:
-            if (-1, -1,-1,-1) in transformations: transformations.remove((-1, -1,-1,-1))
-            if (1, -1, 1, -1) in transformations: transformations.remove(( 1, -1, 1,-1))
-            if (-1, -1, 1, 1) in transformations: transformations.remove((-1, -1, 1, 1))
-            if (1, -1, -1, 1) in transformations: transformations.remove(( 1, -1,-1, 1))
-            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-            #if (1, -1, 1, 1) in transformations: transformations.remove((1, -1, 1, 1))
-            #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
-            #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
-
-    if S[2] < 2:
-        transformations.remove((0, 0, -2, 0))
-        if S[2] == 0:
-            if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1, -1,-1))
-            if (-1, 1, -1, 1) in transformations: transformations.remove((-1, 1, -1, 1))
-            if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1, -1,-1))
-            if (1, -1, -1, 1) in transformations: transformations.remove(( 1,-1, -1, 1))
-            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-            #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
-            #if (1, 1, -1, 1) in transformations: transformations.remove((1, 1, -1, 1))
-            #if (-1, -1, -1, 1) in transformations: transformations.remove((-1, -1, -1, 1))
+    transformations = [(1,1,1,1)] #, (2,0,0,0), (0,2,0,0), (0,0,2,0), (0,0,0,2)]
     
-    if S[3] < 2:
-        transformations.remove((0, 0, 0, -2))
-        if S[3] == 0:
-            if (-1, -1,-1,-1) in transformations: transformations.remove((-1,-1,-1, -1))
-            if (1, -1, 1, -1) in transformations: transformations.remove(( 1,-1, 1, -1))
-            if (1, 1, -1, -1) in transformations: transformations.remove(( 1, 1,-1, -1))
-            if (-1, 1, 1, -1) in transformations: transformations.remove((-1, 1, 1, -1))
-            #if (1, -1, -1, -1) in transformations: transformations.remove((1, -1, -1, -1))
-            #if (-1, 1, -1, -1) in transformations: transformations.remove((-1, 1, -1, -1))
-            #if (-1, -1, 1, -1) in transformations: transformations.remove((-1, -1, 1, -1))
-            #if (1, 1, 1, -1) in transformations: transformations.remove((1, 1, 1, -1))
+    if S[0] >= 2:
+        transformations.append((-2,0,0,0))
+    if S[1] >= 2:
+        transformations.append((0,-2,0,0))
+    
+    #transformations = [(-1,-1,-1,-1), (2,0,0,0), (0,2,0,0)] if np.all( S >= 1) else [(2,0,0,0), (0,2,0,0)]
+    
+    return transformations 
 
-
-    return transformations + [(1, 1, 1, 1), (2, 0, 0, 0), (0, 2, 0, 0), (0, 0, 2, 0), (0, 0, 0, 2)]   #add back always applicable transformations
 
 @jit(fastmath=True, nopython=True, cache=True)
 def get_local_time(grid, num_colors, x, y):
@@ -971,9 +1040,10 @@ def get_local_time_i(grid, c, x, y):
         The local time for the square at position (x, y) for color c.
     """
     return (grid[c, x, y, 0] + grid[c, x, y, 1] + grid[c, x, y + 1, 1] + grid[c, x + 1, y, 0] ) // 2
-                       
+
+                      
 @jit(fastmath=True, nopython=True, cache=True)
-def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
+def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, grid):
     """
         Calculate the acceptance probability for a transformation X on a square s of color c.
 
@@ -991,42 +1061,36 @@ def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
           The acceptance probability for the transformation X on the square s of color c.
         """
     S_p = S + np.array(X)
-    M_prime = len(get_possible_transformations(S_p))
+    M_prime = len(get_possibile_transformations(S_p)) 
+        
     A = 0
     num_colors_half = num_colors / 2
 
-    if np.array_equal(X, [1, 1, 1, 1]):
+    if np.array_equal(X, [1, 1, 1, 1]): # U+
         A = beta**4 / (16 * S_p[0]*S_p[1]*S_p[2]*S_p[3] * \
             (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1)) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1))) * \
             (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
-    elif np.array_equal(X, [-1, -1, -1, -1]):
-        A = (16 / (beta**4)) * S[0]*S[1]*S[2]*S[3] * \
+    elif np.array_equal(X, [-1, -1, -1, -1]): # U-
+        A = (16 / beta**4) * S[0]*S[1]*S[2]*S[3] * \
             (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) / \
             ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) - 1))
-    elif np.array_equal(X, [2, 0, 0, 0]):
+            
+    elif np.array_equal(X, [2, 0, 0, 0]): # T+
         A = beta**2 / (4 * S_p[0] * (S[0]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]))) * \
             (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
-    elif np.array_equal(X, [-2, 0, 0, 0]):
+       
+    elif np.array_equal(X, [-2, 0, 0, 0]): # T-
         A = 4 * S[0] * (S[0]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) / \
-            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1])))
-    elif np.array_equal(X, [0, 2, 0, 0]):
+            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) - 1))
+       
+    elif np.array_equal(X, [0, 2, 0, 0]): # R+
         A = beta**2 / (4 * S_p[1] * (S[1]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1))) * \
             (2*get_local_time_i(grid, c, s[0], s[1]) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1)
-    elif np.array_equal(X, [0, -2, 0, 0]):
+        
+    elif np.array_equal(X, [0, -2, 0, 0]): # R-
         A = 4 * S[1] * (S[1]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) / \
-            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1)))
-    elif np.array_equal(X, [0, 0, 2, 0]):
-        A = beta**2 / (4 * S_p[2] * (S[2]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1)) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1))) * \
-            (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) + 1)
-    elif np.array_equal(X, [0, 0, -2, 0]):
-        A = 4 * S[2] * (S[2]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0], s[1]-1) - 1) / \
-            ((2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1)))
-    elif np.array_equal(X, [0, 0, 0, 2]):
-        A = beta**2 / (4 * S_p[3] * (S[3]+1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1])) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1))) * \
-            (2*get_local_time_i(grid, c, s[0]-1, s[1]-1) + 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1)
-    elif np.array_equal(X, [0, 0, 0, -2]):
-        A = 4 * S[3] * (S[3]-1) / (beta**2) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]) - 1) * (num_colors_half + get_local_time(grid, num_colors,s[0]-1, s[1]-1) - 1) / \
-            ((2*get_local_time_i(grid, c, s[0]-1, s[1]-1) - 1) * (2*get_local_time_i(grid, c, s[0]-1, s[1])))
+            ((2*get_local_time_i(grid, c, s[0], s[1]) - 1) * (2*get_local_time_i(grid, c, s[0], s[1]-1) - 1))
+            
     elif np.array_equal(X, [-1, 1, -1, 1]):
         A = S[0]*S[2] / (S_p[1]*S_p[3])
     elif np.array_equal(X, [1, -1, 1, -1]):
@@ -1045,9 +1109,197 @@ def acceptance_prob_optimized(S, M, s, X, c, beta, num_colors, algo, grid):
             (2*get_local_time_i(grid, c, s[0]-1, s[1]) + 1) / (2*get_local_time_i(grid, c, s[0], s[1]-1) - 1)
 
     # Calculate the acceptance probability based on the algorithm type
+    return M/M_prime * A # if algo == 'metropolis' else 1/(1 + M_prime/(M*A)) # min() is useless since we are doing accept/rejection sampling...
+
+
+##### no interaction 
+
+@jit(fastmath=True, nopython=True, cache=True)
+def acceptance_prob_no_int(S, M, s, X, c, beta, num_colors, algo, grid):
+    """
+    Calculate the acceptance probability for a transformation X on a square s of color c.
+
+    Args:
+        S: The current state of the square s.
+        M: The number of possible transformations for the current state.
+        s: The square to be transformed.
+        X: The transformation to be applied to the square.
+        c: The color of the square to be transformed.
+        beta: the parameter beta of the simulation.
+        num_colors: number of colors in the grid
+        grid: the grid state.
+
+    Returns:
+        The acceptance probability for the transformation X on the square s of color c.
+    """
+    S_p = S + np.array(X)
+    M_prime = len(get_possibile_transformations(S_p))
+    A = 0
+
+    if np.array_equal(X, [1, 1, 1, 1]):
+        A = beta**4 / (S_p[0]*S_p[1]*S_p[2]*S_p[3]) 
+    elif np.array_equal(X, [-1, -1, -1, -1]):
+        A = (1 / beta**4) * S[0]*S[1]*S[2]*S[3] 
+    elif np.array_equal(X, [2, 0, 0, 0]):
+        A = beta**2 / ( S_p[0] * (S[0]+1) )
+    elif np.array_equal(X, [-2, 0, 0, 0]):
+        A = S[0] * (S[0]-1) / (beta**2) 
+    elif np.array_equal(X, [0, 2, 0, 0]):
+        A = beta**2 / (S_p[1] * (S[1]+1) )
+    elif np.array_equal(X, [0, -2, 0, 0]):
+        A = S[1] * (S[1]-1) / (beta**2) 
+    elif np.array_equal(X, [0, 0, 2, 0]):
+        A = beta**2 / (S_p[2] * (S[2]+1) )
+    elif np.array_equal(X, [0, 0, -2, 0]):
+        A = S[2] * (S[2]-1) / (beta**2) 
+    elif np.array_equal(X, [0, 0, 0, 2]):
+        A = beta**2 / (S_p[3] * (S[3]+1))
+    elif np.array_equal(X, [0, 0, 0, -2]):
+        A = S[3] * (S[3]-1) / (beta**2) 
+    elif np.array_equal(X, [-1, 1, -1, 1]):
+        A = S[0]*S[2] / (S_p[1]*S_p[3])
+    elif np.array_equal(X, [1, -1, 1, -1]):
+        A = S[1]*S[3] / (S_p[0]*S_p[2])
+    elif np.array_equal(X, [-1, -1, 1, 1]):
+        A = S[0]*S[1] / (S_p[2]*S_p[3]) 
+    elif np.array_equal(X, [1, 1, -1, -1]):
+        A = S[2]*S[3] / (S_p[0]*S_p[1]) 
+    elif np.array_equal(X, [-1, 1, 1, -1]):
+        A = S[0]*S[3] / (S_p[1]*S_p[2]) 
+    elif np.array_equal(X, [1, -1, -1, 1]):
+        A = S[2]*S[1] / (S_p[3]*S_p[0])
+
+    # Calculate the acceptance probability based on the algorithm type
     return min(1, M/M_prime * A) if algo == 'metropolis' else 1/(1 + M_prime/(M*A))
 
 
+#####
+@jit(fastmath=True, nopython=True, cache=True)
+def check_connectivity(grid, num_colors, v1 = None, v2 = None):
+        """
+        Build loops for each color in the grid.
+
+        If v1 and v2 are both None, return a list of loops for each color and a list of integers representing the lengths of all loops.
+        If v1 and v2 are both not None, return 1 if there exists a loop that joins v1 and v2, and 0 otherwise.
+
+        Args:
+          v1 (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
+          v2 (Optional[Tuple[int, int]]): The ending vertex for the loop. Defaults to None.
+
+        Returns:
+          If v1 and v2 are both None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
+          If v1 and v2 are both not None, return an integer indicating whether there exists a loop that joins v1 and v2 (1 if such a loop exists, 0 otherwise).
+        """
+
+        for c in range(num_colors):
+            #copy the grid 
+            G = np.copy(grid[c])
+            nz = G.nonzero()
+            non_zero = len(nz[0])
+            
+            if non_zero == 0:
+                return 0
+            
+            while non_zero > 0:
+                #pick first non-zero and unvisited edge
+                nz = G.nonzero()
+                non_zero = len(nz[0])
+                if non_zero == 0:
+                    break
+                # choose a random vertex with non-zero incident links, or choose v1
+                if v1 is None:
+                    rand_index = np.random.randint(0, non_zero)
+                    x, y  = nz[0][rand_index], nz[1][rand_index]
+                else:
+                    x, y = v1[0], v1[1]
+                    if (x,y) == v2:
+                        return 1
+                    
+                starting_vertex = (x,y)
+                
+                # first step outside loops
+                dir = []
+                
+                top = G[x,y+1,1]
+                right = G[x+1,y,0]
+                bottom = G[x,y,1]
+                left = G[x,y,0]
+                
+                if top > 0:
+                    dir.extend([0]*top)
+                if right > 0:
+                    dir.extend([1]*right)
+                if bottom > 0:
+                    dir.extend([2]*bottom)
+                if left > 0:
+                    dir.extend([3]*left)
+                
+                if len(dir) == 0:
+                    return 0 
+                
+                # pick a random dir with prob prop to num_links  
+                rand_dir = np.random.choice(np.array(dir))
+                
+                if rand_dir == 0:
+                    # remove one link
+                    G[x,y+1,1] -= 1
+                    #move there
+                    y += 1
+                elif rand_dir == 1:
+                    G[x+1,y,0] -= 1
+                    x += 1
+                elif rand_dir == 2:
+                    G[x,y,1] -= 1
+                    y -= 1
+                elif rand_dir == 3:
+                    G[x,y,0] -= 1
+                    x -= 1
+                    
+                length = 0
+                while True:
+                    if (x,y) == v2:
+                        return 1 
+                    length += 1
+                    # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
+                    dir = []
+                    
+                    top = G[x,y+1,1]
+                    right = G[x+1,y,0]
+                    bottom = G[x,y,1]
+                    left = G[x,y,0]
+                    
+                    if top > 0:
+                        dir.extend([0]*top)
+                    if right > 0:
+                        dir.extend([1]*right)
+                    if bottom > 0:
+                        dir.extend([2]*bottom)
+                    if left > 0:
+                        dir.extend([3]*left)
+
+                    if (x,y) == starting_vertex:
+                        if random.random() <= 1/(len(dir)+1):
+                            break
+                    
+                    # pick a random dir with prob prop to num_links  
+                    rand_dir = np.random.choice(np.array(dir))
+                    
+                    if rand_dir == 0:
+                        # remove one link
+                        G[x,y+1,1] -= 1
+                        #move there
+                        y += 1
+                    elif rand_dir == 1:
+                        G[x+1,y,0] -= 1
+                        x += 1
+                    elif rand_dir == 2:
+                        G[x,y,1] -= 1
+                        y -= 1
+                    elif rand_dir == 3:
+                        G[x,y,0] -= 1
+                        x -= 1
+                     
+###
 
 
 
