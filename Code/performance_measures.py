@@ -5,13 +5,15 @@ from RandomLoop import StateSpace, get_possibile_transformations, minimal_transf
 
 profiler = cProfile.Profile()
 
-m = StateSpace(3, 32, 5.0)
+m = StateSpace(3, 128, 5.0)
 
 m.step()
 
 profiler.enable()
 
 m.step(1_000)
+for _ in range(1_000):
+    m.compute_corr()
 
 profiler.disable()
 
@@ -21,4 +23,5 @@ stats.print_stats()
 
 # If you want to specifically filter for your functions, you might do something like:
 stats.print_stats(m.step.__name__)
+stats.print_stats(m.compute_corr.__name__)
 

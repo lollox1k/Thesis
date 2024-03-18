@@ -4,8 +4,7 @@ import numpy as np
 import random
 from tqdm.auto import trange, tqdm
 
-from numba import jit, int32, float32, typeof, int64
-from numba.experimental import jitclass
+from numba import jit
 
 from itertools import cycle
 import logging
@@ -16,7 +15,8 @@ import colorsys
 from matplotlib.colors import Normalize, ListedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import LineCollection
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, ArtistAnimation
+from matplotlib.text import Text
 
 
 """
@@ -29,7 +29,7 @@ The class also includes methods for saving and loading the state of the simulati
 
 GAMMA = 1.5   # changes the gradient of the colormap, high GAMMA means similar colors, big gap with the background, GAMMA = 1 means the gradient is linear which cause low visibility sometimes
 plt.style.use("dark_background")  # set dark background as default style
-plt.rcParams['animation.embed_limit'] = 100 # Set the limit to 100 MB (default is 21 MB)
+plt.rcParams['animation.embed_limit'] = 128 # Set the limit to 100 MB (default is 21 MB)
 
 # How the grid id saved.
 #
@@ -85,24 +85,6 @@ def log_time(func):
 
 #################### class ########################
 
-class LCG:
-    def __init__(self, seed=1, a=1664525, c=1013904223, m=2**32):
-        self.state = seed
-        self.a = a
-        self.c = c
-        self.m = m
-
-    def random(self):
-        """Generate a pseudorandom number between 0 and 1."""
-        self.state = (self.a * self.state + self.c) % self.m
-        return self.state / self.m
-
-    def randint(self, low, high):
-        """Generate a pseudorandom integer between low (inclusive) and high (exclusive)."""
-        # Ensuring the random number falls within the specified range
-        return low + int(self.random() * (high - low))
-
-
 class StateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
@@ -127,12 +109,12 @@ class StateSpace:
         self.accepted = 0
         self.rejected = 0
         self.algo = algo
-        self.sample_rate = 10_000
+        self.sample_rate = None
         self.stop = False
-        self.data = {}  # dictionary to store data
+        self.data = {}  
         self.shape = (num_colors, grid_size+2, grid_size+2, 2)  #the +2 is for free bc  we work only on vertices from  (1,grid_size+1)
         self.grid = 2*np.random.randint(0, 10, self.shape, dtype=int) if bc == 'random' else bc*np.ones(self.shape, dtype=int)
-        self.rng = [[] for _ in range(12)]
+      
         # set the initial state
         if init == 'random':
             self.random_init()
@@ -143,17 +125,57 @@ class StateSpace:
         else:
             self.uniform_init(init)
 
-    def random_init(self):
-        self.grid[:, 1:-1, 1:-1, :] = 2*np.random.randint(0, 10, size = (self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
+    def random_init(self): # random with mean links approx beta
+        self.grid[:, 1:-1, 1:-1, :] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
         # bottom border
-        self.grid[:, 1:-1, 0, 0] = 2*np.random.randint(0, 10, size = (self.num_colors, self.grid_size))
+        self.grid[:, 1:-1, 0, 0] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size))
         # left border
-        self.grid[:, 0, 1:-1, 1] = 2*np.random.randint(0, 10, size = (self.num_colors, self.grid_size))
+        self.grid[:, 0, 1:-1, 1] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size))
+        
+        # apply random transformations
+        for _ in range(self.num_colors * self.V):
+             # choose a random color 
+            c = np.random.randint(0, self.num_colors)
+            # choose a random square
+            s = np.random.randint(0, self.grid_size, size=2)
+            S = np.zeros(4, dtype=int)
+            # handle boundary cases 
+            if s[0] == 0:
+                if s[1] == 0:
+                    transformations = [(0,0,0,0)]
+                S[1] = self.grid[c, s[0], s[1], 1]
+                if S[1] >= 2:
+                    transformations = [(0, 2, 0, 0), (0, -2, 0, 0)]
+                else:
+                    transformations = [(0, 2, 0, 0)]
+                    
+            elif s[1] == 0:
+                S[0] = self.grid[c, s[0], s[1], 0]
+                if S[0] >= 2:
+                    transformations = [(2, 0, 0, 0), (-2, 0, 0, 0)]
+                else:
+                    transformations = [(2, 0, 0, 0)]
+            else:
+                # get links of color c on each side of square s
+                S[0] = self.grid[c, s[0], s[1], 0]
+                S[2] = self.grid[c, s[0], s[1]-1, 0]
+                S[1] = self.grid[c, s[0], s[1], 1]
+                S[3] = self.grid[c, s[0]-1, s[1], 1]
+
+                # get list of all possible transformation
+                transformations = get_possibile_transformations(S) 
+            
+            # pick uniformly a random transformation
+            M = len(transformations)   # num of possible transformation of current state, compute only once! we also need it to compute tha ratio M/M_prime in acceptance_prob
+            index = np.random.randint(0,M)
+            X = transformations[index]
+            self.square_transformation(c, s, X)
+      
 
     def uniform_init(self, k):
         self.grid[:, 1:-1, 1:-1, :] = k*np.ones((self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
         
-    def step(self, num_steps = 1, progress_bar = True, sample_rate = 10_000, observables = None, perturb=False): 
+    def step(self, num_steps=1, sample_rate=10_000, beta=None, observables=None, progress_bar=True): 
         """
         Update the grid for a given number of steps.
 
@@ -163,7 +185,9 @@ class StateSpace:
           sample_rate: The rate at which to sample observables during the simulation.
           observables: A list of functions or tuples of function and string that calculate observables to be measured during the simulation.
         """
-       
+        # update beta value
+        self.beta = beta if beta is not None else self.beta
+        
         # add some info to the data dictionary
         self.data['num_steps'] = self.data.get('num_steps', 0) + num_steps # if it's the first run, set the number of steps, otherwise add it.
         self.data['beta'] = self.beta
@@ -351,7 +375,7 @@ class StateSpace:
                 total_local_time += self.get_local_time(x,y)
         return total_local_time / self.V
 
-    def loop_builder(self, v1 = None, v2 = None):
+    def loop_builder(self):
         """
         Build loops for each color in the grid.
 
@@ -389,18 +413,13 @@ class StateSpace:
                 if non_zero == 0:
                     break
                 # choose a random vertex with non-zero incident links, or choose v1
-                if v1 is None:
-                    rand_index = np.random.randint(0, non_zero)
-                    x, y  = nz[0][rand_index], nz[1][rand_index]
-                else:
-                    x, y = v1[0], v1[1]
-                    if (x,y) == v2:
-                        return 1
-                    
+           
+                x, y  = nz[0][0], nz[1][0]
+              
                 starting_vertex = (x,y)
                 current_loop = []
                 
-                # first step outside loops
+                # first step outside loops | why?
                 dir = []
                 
                 top = G[x,y+1,1]
@@ -441,8 +460,6 @@ class StateSpace:
                 length = 0
                 while True:
                     current_loop.append((x,y))
-                    if (x,y) == v2:
-                        return 1 
                     length += 1
                     # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
                     dir = []
@@ -462,7 +479,7 @@ class StateSpace:
                         dir.extend([3]*left)
 
                     if (x,y) == starting_vertex:
-                        if random.random() <= 1/(len(dir)+1):
+                        if np.random.rand() <= 1/(len(dir)+1):
                             color_lengths.append(length)
                             break
                     
@@ -488,7 +505,7 @@ class StateSpace:
             loops.append(color_loops)
             lenghts.append(color_lengths)
             
-        return (loops, lenghts) if v1 is None else 0
+        return loops, lenghts
     
     def compute_corr(self):
         """
@@ -610,7 +627,7 @@ class StateSpace:
         ax.legend()
         plt.show()
         
-    def plot_grid(self, figsize = (10,8), linewidth = 1.0, colorbar = True, file_name = None):
+    def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, file_name=None):
         """
         Plot the grid for all colors.
 
@@ -697,7 +714,7 @@ class StateSpace:
             plt.savefig(file_name)
         plt.show()
         
-    def animate(self, frames = None, normalized=False, file_name=None, alpha = 1, linewidth=1):
+    def animate(self, frames=None, interval=50, normalized=False, file_name=None, alpha = 1, linewidth=1):
          
          # first check if we have data
         assert 'get_grid' in self.data, 'to generate an animation first sample the grid state using the method "get_grid"'
@@ -710,19 +727,21 @@ class StateSpace:
                 num_segments = [2]*self.num_colors 
         else:
             num_segments = max_links
-    
-        # frame update function
-        def get_frame(i):
+        
+        if frames == None:
+            frames = len(self.data['get_grid'])
             
-            ax.clear()
+        def get_frame(i):
+            # Instead of clearing and redrawing, make all previous artists invisible
+            for artist in ax.collections:
+                artist.set_visible(False)
             ax.set_title('step {}'.format(i * self.sample_rate))
-            # Initialize an empty list to collect the artists that are created/modified
-            artists = []
+            artists = [] 
             
             for c in range(self.num_colors):
-                cmap = create_cmap(self.num_colors, c, num_segments[c])  
+                cmap = create_cmap(self.num_colors, c, num_segments[c])  # Assuming this is defined
                 segments = []
-
+                # Collect line segments...
                 # Collect line segments for horizontal and vertical lines
                 for x in range(self.grid_size):
                     for y in range(self.grid_size):
@@ -733,29 +752,23 @@ class StateSpace:
                         if self.data['get_grid'][i][c][x][y][1] != 0:
                             segments.append([(x, y), (x, y - 1)])
 
-                # Assuming colors are normalized between 0 and 1, adjust as needed
                 line_colors = [cmap(self.data['get_grid'][i][c][x][y][z]) for x in range(self.grid_size) for y in range(self.grid_size) for z in range(2) if self.data['get_grid'][i][c][x][y][z] != 0]
-
-                # Create a LineCollection
                 lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
                 ax.add_collection(lc)
-
-                # Add the LineCollection to the list of artists to return
+                # Include this LineCollection in the list of artists to be updated
                 artists.append(lc)
-                
+      
             ax.set_xlim(-0.05 * self.grid_size, self.grid_size * 1.05)
             ax.set_ylim(-0.05 * self.grid_size, self.grid_size * 1.05)
             ax.axis('off')
+
             return artists
-            
-        if frames == None:
-            frames = len(self.data['get_grid'])
-            
-        # use matplotlib to create animation    
-        animation = FuncAnimation(fig, get_frame, frames=frames, interval=50, repeat=False, blit = True)
+         
+        animation = FuncAnimation(fig, get_frame, frames=frames, interval=interval, repeat=False, blit=True)
+       
+       
         return animation if file_name is None else animation.save(file_name)
-
-
+    
     def summary(self):
         """
         Print a summary of the current state of the grid.

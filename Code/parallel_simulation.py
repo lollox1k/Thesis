@@ -41,14 +41,12 @@ if __name__ == '__main__':
     params = {
         'trials': 1,
         'num_colors': 3,
-        'grid_size': 128,
+        'grid_size': 256,
         'betas': np.linspace(1,6,4),
-        'eq_steps': 10_000,
-        'run_steps': 10_000,
+        'eq_steps': 10_000_000,
+        'run_steps': 10_000_000,
         'sample_rate': 10_000
         }
-
-
 
     N = cpu_count() // 2 # 16 threads but only 8 cpus
 
