@@ -1,27 +1,28 @@
 import cProfile
 import pstats
 import numpy as np
-from RandomLoop import StateSpace, get_possibile_transformations, minimal_transformations  # Import your functions
+from RandomLoop import StateSpace  # Import your functions
 
 profiler = cProfile.Profile()
 
-m = StateSpace(3, 128, 5.0)
+m = StateSpace(3, 64, 3)
 
-m.step()
+
 
 profiler.enable()
 
-m.step(1_000)
-for _ in range(1_000):
-    m.compute_corr()
+for _ in range(100):
+    m.random_init()
+    m.loop_builder((32,32))
 
 profiler.disable()
 
-# Correct way to sort and print stats
+# sort and print stats
 stats = pstats.Stats(profiler).sort_stats('cumulative')
 stats.print_stats()
 
-# If you want to specifically filter for your functions, you might do something like:
-stats.print_stats(m.step.__name__)
-stats.print_stats(m.compute_corr.__name__)
+# filter functions
+stats.print_stats(m.loop_builder.__name__)
+stats.print_stats(np.copy.__name__)
+
 

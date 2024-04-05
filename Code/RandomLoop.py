@@ -126,14 +126,14 @@ class StateSpace:
             self.uniform_init(init)
 
     def random_init(self): # random with mean links approx beta
-        self.grid[:, 1:-1, 1:-1, :] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
+        self.grid[:, 1:-1, 1:-1, :] = 2*np.random.randint(0, 2 + self.beta // (2 * self.num_colors), size = (self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
         # bottom border
-        self.grid[:, 1:-1, 0, 0] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size))
+        self.grid[:, 1:-1, 0, 0] = 2*np.random.randint(0, 2 + self.beta // (2 * self.num_colors), size = (self.num_colors, self.grid_size))
         # left border
-        self.grid[:, 0, 1:-1, 1] = 2*np.random.randint(0, 2*self.beta, size = (self.num_colors, self.grid_size))
+        self.grid[:, 0, 1:-1, 1] = 2*np.random.randint(0, 2 + self.beta // (2 * self.num_colors), size = (self.num_colors, self.grid_size))
         
         # apply random transformations
-        for _ in range(self.num_colors * self.V):
+        for _ in range(self.V):
              # choose a random color 
             c = np.random.randint(0, self.num_colors)
             # choose a random square
@@ -194,8 +194,8 @@ class StateSpace:
         self.data['grid_size'] = self.grid_size
         self.sample_rate = sample_rate
         
+        # prepare the data dictionary to store samples
         obs_is_dict = isinstance(observables, dict) 
-        
         if observables is not None: 
             for ob in observables:
                 if callable(ob):
@@ -209,10 +209,10 @@ class StateSpace:
         else:
             observables = []
         
-        # generate random numbers before looping to improve performance by x2.5 !!!
-        squares = np.random.randint(0, self.grid_size+1, size = (num_steps, 2), dtype=int) 
-        colors = np.random.randint(0, self.num_colors, size = num_steps, dtype=int)
-        indexs = [ np.random.randint(0, M+1, size = num_steps) for M in range(0, 13)]
+        # generate random numbers before looping to improve performance by x5 !!! WARNING uses lots of RAM (100M steps is 600Mb)
+        squares = np.random.randint(0, self.grid_size+1, size = (num_steps, 2)) 
+        colors = np.random.randint(0, self.num_colors, size = num_steps)
+        indexs = [np.random.randint(0, M+1, size = num_steps) for M in range(0, 13)]
         
         for i in trange(num_steps, disable = not progress_bar):  
             # store data every sample_rate steps
@@ -374,21 +374,28 @@ class StateSpace:
             for y in range(1,self.grid_size+1):
                 total_local_time += self.get_local_time(x,y)
         return total_local_time / self.V
-
-    def loop_builder(self):
+    
+    def concentration_coeff(self):
+        tot = 0
+        for x in range(1,self.grid_size+1):
+            for y in range(1,self.grid_size+1):
+                lt = self.get_local_time(x, y)
+                if lt != 0:
+                    for c in range(self.num_colors):
+                        for cc in range(c):
+                            tot += abs( self.get_local_time_i(c, x, y) -  self.get_local_time_i(cc, x, y)) / lt
+                    
+        return tot / ((self.num_colors-1) * self.V)
+    def loop_builder(self, v=None):
         """
         Build loops for each color in the grid.
 
-        If v1 and v2 are both None, return a list of loops for each color and a list of integers representing the lengths of all loops.
-        If v1 and v2 are both not None, return 1 if there exists a loop that joins v1 and v2, and 0 otherwise.
-
         Args:
-          v1 (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
-          v2 (Optional[Tuple[int, int]]): The ending vertex for the loop. Defaults to None.
+          v (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
 
         Returns:
-          If v1 and v2 are both None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
-          If v1 and v2 are both not None, return an integer indicating whether there exists a loop that joins v1 and v2 (1 if such a loop exists, 0 otherwise).
+          If v is None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
+          If v is a Tuple, return loops and lenghts of loops that visit v.
         """
         loops = []
         lenghts = []
@@ -400,23 +407,34 @@ class StateSpace:
             # set to zero in the boundary  
             G[0, :, 0] = 0  
             G[:, 0, 1] = 0
-           
-            nz = G.nonzero()
-            non_zero = len(nz[0])
+
+            # check if there are links
+            if v is None:
+                nz = G.nonzero()
+                non_zero = len(nz[0])    
+            else:
+                non_zero = G[v[0], v[1], 0] + G[v[0], v[1], 1] + G[v[0], v[1]+1, 1] + G[v[0]+1, v[1], 0]
+                
             if non_zero == 0:
                 color_lengths.append(0)
-            
+                    
             while non_zero > 0:
                 #pick first non-zero and unvisited edge
-                nz = G.nonzero()
-                non_zero = len(nz[0])
-                if non_zero == 0:
-                    break
-                # choose a random vertex with non-zero incident links, or choose v1
-           
-                x, y  = nz[0][0], nz[1][0]
+                if v is None:
+                    nz = G.nonzero()
+                    non_zero = len(nz[0])
+                    if non_zero != 0:
+                        x, y  = nz[0][0], nz[1][0]
+                    else:
+                        break
+                else:
+                    non_zero = G[v[0], v[1], 0] + G[v[0], v[1], 1] + G[v[0], v[1]+1, 1] + G[v[0]+1, v[1], 0]
+                    if non_zero != 0:
+                        x, y = v[0], v[1] 
+                    else:
+                        break
               
-                starting_vertex = (x,y)
+                starting_vertex = (x,y) 
                 current_loop = []
                 
                 # first step outside loops | why?
@@ -436,10 +454,6 @@ class StateSpace:
                 if left > 0:
                     dir.extend([3]*left)
                 
-                if len(dir) == 0:
-                    return 0 
-                
-                # pick a random dir with prob prop to num_links  
                 rand_dir = np.random.choice(dir)
                 
                 if rand_dir == 0:
@@ -469,6 +483,7 @@ class StateSpace:
                     bottom = G[x,y,1]
                     left = G[x,y,0]
                     
+                   
                     if top > 0:
                         dir.extend([0]*top)
                     if right > 0:
@@ -477,13 +492,13 @@ class StateSpace:
                         dir.extend([2]*bottom)
                     if left > 0:
                         dir.extend([3]*left)
-
+                    
+                    
                     if (x,y) == starting_vertex:
                         if np.random.rand() <= 1/(len(dir)+1):
                             color_lengths.append(length)
                             break
                     
-                    # pick a random dir with prob prop to num_links  
                     rand_dir = np.random.choice(dir)
                     
                     if rand_dir == 0:
@@ -562,6 +577,19 @@ class StateSpace:
                         return False 
         return True 
     
+    def find_connected_components(self, v=None):
+        
+        """
+        Find connected components in each 2D grid of the 4D array.
+        
+        :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
+        :return: List of lists containing the number of connected components for each color
+        """
+        binary_array = self.grid != 0 
+        binary_array = binary_array.astype(int)
+            
+        return find_components_with_vertices(binary_array, v)
+    
     def plot_one_color(self, c, cmap, ax, alpha=1.0, linewidth = 1.0):
         """
         Optimized function to plot grid lines of color c using batch drawing with LineCollection for efficiency.
@@ -593,40 +621,84 @@ class StateSpace:
         lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
         ax.add_collection(lc)
         return lc
-
-    def plot_loop(self, c, loop, colors = None, alpha = 0.25, linewidth = 1.5): 
+    
+    def plot_loop(self, ax, c, loop, colors=None, alpha=0.25, linewidth=1.5): 
         """
-        Highlights a loop in a given color c.
+        Highlights a loop(s) in a given color c.
 
         Args:
           c: The color for which to plot.
+          loop: The loop(s) to be plotted
+          color: The color to be used for plotting the loop. 
+          alpha: The transparency level for the plot.
+          linewidth: The width of the lines in the plot.
+        """
+        if loop == []:
+            return None
+        elif type(loop[0]) ==  tuple:
+            loop = [loop] 
+            
+        if colors == None:
+            colors_gen = cycle([plt.cm.Set3(i) for i in range(12)])
+            colors = [next(colors_gen) for _ in range(len(loop))] 
+        # Initialize lists to collect line segments
+        segments = []
+       
+        for l in loop:
+            for i in range(len(l)-1):
+                #segments.append([l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]])
+                segments.append([l[i], l[i+1]])
+               
+            #draw last link
+            #segments.append( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]]) #, linewidth=linewidth, color=color, alpha=alpha, label='length = {}'.format(len(l)))
+            if np.sum( abs(l[-1][0] - l[0][0]) + abs(l[-1][1] - l[0][1]) ) == 1:
+                segments.append([l[-1], l[0]])  
+        #line_colors = [cmap(self.grid[c][x][y][z]) for x in range(len(self.grid[0][0])) for y in range(len(self.grid[0][0])) for z in range(2) if self.grid[c][x][y][z] != 0]
+       
+        # Create a LineCollection
+        lc = LineCollection(segments, colors=colors, linewidths=linewidth, alpha=alpha)
+        ax.add_collection(lc)
+        return lc
+    
+        
+    def plot_loop_overlap(self, loops, figsize=(12,12), alpha=1, linewidth=1.5, colors=None, file_name=None):
+        """
+        Highlights a loop(s) in the overlapped grid
+
+        Args:
           loop: The loop(s) to be plotted.
           color: The color to be used for plotting the loop. Default is yellow
           alpha: The transparency level for the plot.
           linewidth: The width of the lines in the plot.
         """
-        if type(loop[0]) ==  tuple:
-            loop = [loop] 
+        # Create a figure and axes
+        fig, ax = plt.subplots(figsize=figsize)
+        for c in range(self.num_colors):
+            # Define a colormap
+            num_segments = int(self.max_links()[c]+1)
+            cmap = create_cmap(self.num_colors, c, num_segments)
+
+            self.plot_one_color(c, cmap, ax, alpha)
+            self.plot_loop(ax, c, loops[c], colors=colors, alpha=alpha, linewidth=linewidth)
             
-        if colors == None:
-            colors = cycle([plt.cm.Set3(i) for i in range(12)])
-        
-        fig, ax = plt.subplots(figsize=(12,12))
-        num_segments = int(self.max_links()[c]+1)            #color dependet!
-        cmap = create_cmap(self.num_colors, c, num_segments)
-        self.plot_one_color(c, cmap, ax)
-        
-         
-        for l in loop:
-            color = next(colors)
-            for i in range(len(l)-1):
-                ax.plot( [l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]], linewidth=linewidth, color = color, alpha = alpha)
-            #draw last link
-            ax.plot( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]], linewidth=linewidth, color = color, alpha = alpha, label = 'length = {}'.format(len(l)))
-        #ax.set_title('length = {}'.format(len(loop)))
-        ax.legend()
+            ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
+            ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
+            ax.set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
+            
+            ax.axis('off')
+            
+            #ax.axis('square')
+            # grid
+            #ax.set_xticks(np.arange(1,self.grid_size+1), minor = True)
+            #ax.set_yticks(np.arange(1,self.grid_size+1), minor = True)
+            #ax.grid(which='both')
+            #ax.axis('off')
+        #save it
+        if file_name != None:
+            plt.savefig(file_name)
         plt.show()
         
+    
     def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, file_name=None):
         """
         Plot the grid for all colors.
@@ -684,17 +756,12 @@ class StateSpace:
           linewidth: The width of the lines in the plot.
         """
         # Create a figure and axes
-        fig, ax = plt.subplots(figsize = figsize)
+        fig, ax = plt.subplots(figsize=figsize)
 
         for c in range(self.num_colors):
             # Define a colormap
             num_segments = int(self.max_links()[c]+1) if not normalized else 2
             cmap = create_cmap(self.num_colors, c, num_segments)
-            
-            # Create a ScalarMappable for colorbar
-            norm = Normalize(vmin=0, vmax=num_segments)
-            sm = ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])  # Empty array, as we'll not use actual data
 
             self.plot_one_color(c, cmap, ax, alpha, linewidth)
             ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
@@ -958,7 +1025,67 @@ class NumpyEncoder(json.JSONEncoder):
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
         
+
+def dfs_with_components(binary_array, x, y, color, visited, component):
+    """
+    Perform DFS from the given vertex, marking all reachable vertices within the same component
+    and adding them to the component list.
+    
+    :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
+    :param x: Current x coordinate in the grid
+    :param y: Current y coordinate in the grid
+    :param color: Current color layer being processed
+    :param visited: 2D array marking visited vertices for the current color layer
+    :param component: List to store vertices belonging to the current component
+    """
+    grid_size = binary_array.shape[1]
+    if x <= 0 or x >= grid_size or y <= 0 or y >= grid_size or visited[x, y]:
+        return
+    
+    # Mark the current vertex as visited and add it to the component
+    visited[x, y] = True
+    component.append((x, y))
+    
+    # Horizontal edge to the right
+    if y + 1 < grid_size and binary_array[color, x, y, 0] == 1:
+        dfs_with_components(binary_array, x, y + 1, color, visited, component)
+    
+    # Vertical edge downward
+    if x + 1 < grid_size and binary_array[color, x, y, 1] == 1:
+        dfs_with_components(binary_array, x + 1, y, color, visited, component)
+    
+    # Note: This approach assumes directed edges. If edges are bidirectional,
+    # you'd need to consider additional cases for left and upward edges.
+
+def find_components_with_vertices(binary_array, v=None):
+    """
+    Find connected components for each color in binary_array and return the vertices
+    in each connected component. If v is not None, returns just the connected components that contain v
+    
+    :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
+    :return: List of lists containing the vertices of connected components for each color
+    """
+    num_colors, grid_size, _, _ = binary_array.shape
+    components_per_color = []
+    
+    for color in range(num_colors):
+        visited = np.zeros((grid_size, grid_size), dtype=bool)
+        color_components = []
+        if v is None:
+            for x in range(grid_size):
+                for y in range(grid_size):
+                    if not visited[x, y]:
+                        component = []
+                        dfs_with_components(binary_array, x, y, color, visited, component)
+                        color_components.append(component)
+        else:
+            component = []
+            dfs_with_components(binary_array, v[0], v[1], color, visited, component)
+            color_components.append(component)
+            
+        components_per_color.append(color_components)
         
+    return components_per_color
            
 #########################################################################################################
 #
@@ -1315,6 +1442,39 @@ def check_connectivity(grid, num_colors, v1 = None, v2 = None):
 ###
 
 
+
+
+@jit(fastmath=True, nopython=True, cache=True)
+def find_connected_components(matrix):
+    def dfs(i, j, island):
+        if i < 0 or i >= matrix.shape[0] or j < 0 or j >= matrix.shape[1] or matrix[i, j] == 0:
+            return
+        matrix[i, j] = 0  # Mark as visited
+        island.append((i, j))
+        
+        dfs(i+1, j, island)  # Down
+        dfs(i-1, j, island)  # Up
+        dfs(i, j+1, island)  # Right
+        dfs(i, j-1, island)  # Left
+
+    components = []
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if matrix[i, j] == 1:
+                current_island = []
+                dfs(i, j, current_island)
+                components.append(current_island)
+    return components
+
+# Example matrix as a NumPy array
+matrix_example = np.array([
+    [1, 1, 0, 0, 0],
+    [0, 1, 0, 0, 1],
+    [1, 0, 0, 1, 1],
+    [0, 0, 0, 0, 0],
+    [1, 0, 1, 0, 1]
+])
+        
 
 # since running @jit functions for the first time is slow, we do a step of the chain at import
 m = StateSpace(1, 10, 1)
