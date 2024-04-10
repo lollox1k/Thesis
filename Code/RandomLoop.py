@@ -10,6 +10,7 @@ from itertools import cycle
 import logging
 import time
 from functools import wraps
+from collections import deque
 
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
@@ -590,6 +591,18 @@ class StateSpace:
             
         return find_components_with_vertices(binary_array, v)
     
+    def check_percolation(self, color=0):
+        """
+        Checks for percolation
+        """
+        # generate perc configuration
+        perc_conf = np.where( self.grid[color] >= 1, 1, 0)
+        
+        for y in range(self.grid_size + 1):
+            if bfs(perc_conf, (0, y)):
+                return 1 
+        return 0 
+    
     def plot_one_color(self, c, cmap, ax, alpha=1.0, linewidth = 1.0):
         """
         Optimized function to plot grid lines of color c using batch drawing with LineCollection for efficiency.
@@ -699,7 +712,7 @@ class StateSpace:
         plt.show()
         
     
-    def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, file_name=None):
+    def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, axis=False, file_name=None):
         """
         Plot the grid for all colors.
 
@@ -728,7 +741,8 @@ class StateSpace:
             axes[c].set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             axes[c].set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             #axes[c].axis('square')
-            axes[c].axis('off')                                                ########### axis
+            if not axis:
+                axes[c].axis('off')                                        
             
             # Add colorbar
             if colorbar:
@@ -1025,6 +1039,65 @@ class NumpyEncoder(json.JSONEncoder):
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
         
+
+def bfs(perc_conf, x):
+    """
+    Perform a BFS from the given vertex x, marking all visited vertices. If vertex y is found, return 1
+    Vertex x should be on the left/bottom of the grid
+    """
+    grid_size = perc_conf.shape[0]
+    visited = np.zeros(shape=(grid_size, grid_size))
+    queue = deque()
+    
+    # Set current vertex as visited, add it to the queue
+    visited[x[0], x[1]] = 1 
+    queue.append(x) 
+    
+    if x[0] == 0: # x is on the left border
+        horiz = True 
+    elif x[1] == 0:
+        horiz = False 
+    else:
+        print(x) 
+        
+    # Iterate over the queue
+    while queue:
+        # Dequeue 
+        currentVertex = queue.popleft()
+        
+        # check here
+        if horiz:
+            if currentVertex[0] == grid_size - 2:
+                #print(f'Reached vertex {currentVertex}')
+                return 1 
+        else:
+            if currentVertex[1] == grid_size - 2:
+                #print(f'Reached vertex {currentVertex}')
+                return 1 
+            
+        # Get all neighbours of currentVertex        
+        # If an adjacent has not been visited, then mark it visited and enqueue it
+        if perc_conf[currentVertex[0], currentVertex[1], 0] == 1 and not visited[currentVertex[0]-1, currentVertex[1]]:
+            # left neighbour
+            visited[currentVertex[0]-1, currentVertex[1]] = 1
+            queue.append((currentVertex[0]-1, currentVertex[1]))
+            
+        if perc_conf[currentVertex[0], currentVertex[1], 1] == 1 and not visited[currentVertex[0], currentVertex[1]-1]:
+            # bottom neighbour
+            visited[currentVertex[0], currentVertex[1]-1] = 1
+            queue.append((currentVertex[0], currentVertex[1]-1))
+            
+        if perc_conf[currentVertex[0]+1, currentVertex[1], 0] == 1 and not visited[currentVertex[0]+1, currentVertex[1]]:
+            # right neighbour
+            visited[currentVertex[0]+1, currentVertex[1]] = 1
+            queue.append((currentVertex[0]+1, currentVertex[1]))
+            
+        if perc_conf[currentVertex[0], currentVertex[1]+1, 1] == 1 and not visited[currentVertex[0], currentVertex[1]+1]:
+            # top neighbour
+            visited[currentVertex[0], currentVertex[1]+1] = 1
+            queue.append((currentVertex[0], currentVertex[1]+1))
+              
+    return 0
 
 def dfs_with_components(binary_array, x, y, color, visited, component):
     """
@@ -1465,16 +1538,7 @@ def find_connected_components(matrix):
                 dfs(i, j, current_island)
                 components.append(current_island)
     return components
-
-# Example matrix as a NumPy array
-matrix_example = np.array([
-    [1, 1, 0, 0, 0],
-    [0, 1, 0, 0, 1],
-    [1, 0, 0, 1, 1],
-    [0, 0, 0, 0, 0],
-    [1, 0, 1, 0, 1]
-])
-        
+   
 
 # since running @jit functions for the first time is slow, we do a step of the chain at import
 m = StateSpace(1, 10, 1)
