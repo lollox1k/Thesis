@@ -90,7 +90,7 @@ class StateSpace:
     """
     A class representing the state space of a coloring problem on a grid.
     """
-    def __init__(self, num_colors, grid_size, beta, init=0, bc=0, algo='metropolis'): 
+    def __init__(self, num_colors, grid_size, beta, init=0, bc=None, algo='metropolis'): 
         """
         Initialize the state space with the given parameters.
 
@@ -114,8 +114,14 @@ class StateSpace:
         self.stop = False
         self.data = {}  
         self.shape = (num_colors, grid_size+2, grid_size+2, 2)  #the +2 is for free bc  we work only on vertices from  (1,grid_size+1)
-        self.grid = 2*np.random.randint(0, 10, self.shape, dtype=int) if bc == 'random' else bc*np.ones(self.shape, dtype=int)
-      
+        self.grid =  np.zeros(self.shape, dtype=int)
+
+        if bc is not None:
+            self.grid[bc, 0, :-1, 0] =  1
+            self.grid[bc, :-1, 0, 1] =  1
+            self.grid[bc, -1, :-1, 0] =  1
+            self.grid[bc, :-1, -1, 1] =  1
+        
         # set the initial state
         if init == 'random':
             self.random_init()
@@ -170,8 +176,7 @@ class StateSpace:
             M = len(transformations)   # num of possible transformation of current state, compute only once! we also need it to compute tha ratio M/M_prime in acceptance_prob
             index = np.random.randint(0,M)
             X = transformations[index]
-            self.square_transformation(c, s, X)
-      
+            self.square_transformation(c, s, X)    
 
     def uniform_init(self, k):
         self.grid[:, 1:-1, 1:-1, :] = k*np.ones((self.num_colors, self.grid_size, self.grid_size, 2), dtype=int)
@@ -343,7 +348,7 @@ class StateSpace:
         Returns:
           The maximum number of links for each color.
         """
-        return np.max(self.grid[:, 1:-1, 1:-1, :], axis=(1,2,3))
+        return np.max(self.grid, axis=(1,2,3))
     
     def mean_links(self):
         """
@@ -387,6 +392,7 @@ class StateSpace:
                             tot += abs( self.get_local_time_i(c, x, y) -  self.get_local_time_i(cc, x, y)) / lt
                     
         return tot / ((self.num_colors-1) * self.V)
+    
     def loop_builder(self, v=None):
         """
         Build loops for each color in the grid.
@@ -523,6 +529,117 @@ class StateSpace:
             
         return loops, lenghts
     
+    def loop_builder_fast(self, v=None):
+        """
+        Build loops for each color in the grid, by choosing in descending priority: top, right, bottom and left links. 
+        This means the pairing configuration is not uniform, still the mean should work across different link configurations.
+
+        Args:
+          v (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
+
+        Returns:
+          If v is None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
+          If v is a Tuple, return loops and lenghts of loops that visit v.
+        """
+        loops = []
+        lenghts = []
+        for c in range(self.num_colors):
+            color_loops = []
+            color_lengths = []
+            #copy the grid 
+            G = np.copy(self.grid[c])
+            # set to zero in the boundary  
+            G[0, :, 0] = 0  
+            G[:, 0, 1] = 0
+
+            # check if there are links
+            if v is None:
+                nz = G.nonzero()
+                non_zero = len(nz[0])    
+            else:
+                non_zero = G[v[0], v[1], 0] + G[v[0], v[1], 1] + G[v[0], v[1]+1, 1] + G[v[0]+1, v[1], 0]
+                
+            if non_zero == 0:
+                color_lengths.append(0)
+                    
+            while non_zero > 0:
+                #pick first non-zero and unvisited edge
+                if v is None:
+                    nz = G.nonzero()
+                    non_zero = len(nz[0])
+                    if non_zero != 0:
+                        x, y  = nz[0][0], nz[1][0]
+                    else:
+                        break
+                else:
+                    non_zero = G[v[0], v[1], 0] + G[v[0], v[1], 1] + G[v[0], v[1]+1, 1] + G[v[0]+1, v[1], 0]
+                    if non_zero != 0:
+                        x, y = v[0], v[1] 
+                    else:
+                        break
+              
+                starting_vertex = (x,y) 
+                current_loop = []
+                
+                # first step outside loops | why?
+             
+                top = G[x,y+1,1]
+                right = G[x+1,y,0]
+                bottom = G[x,y,1]
+                left = G[x,y,0]
+                
+                if top > 0:
+                    # remove one link
+                    G[x,y+1,1] -= 1
+                    #move there
+                    y += 1
+                elif right > 0:
+                    G[x+1,y,0] -= 1
+                    x += 1
+                elif bottom > 0:
+                    G[x,y,1] -= 1
+                    y -= 1
+                elif left > 0:
+                    G[x,y,0] -= 1
+                    x -= 1
+                    
+                length = 0
+                while True:
+                    current_loop.append((x,y))
+                    length += 1
+                    # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
+                    
+                    top = G[x,y+1,1]
+                    right = G[x+1,y,0]
+                    bottom = G[x,y,1]
+                    left = G[x,y,0]
+            
+                    if (x,y) == starting_vertex:
+                        if np.random.rand() <= 1/(top + right + bottom + left + 1):
+                            color_lengths.append(length)
+                            break
+                    
+                    if top > 0:
+                        # remove one link
+                        G[x,y+1,1] -= 1
+                        #move there
+                        y += 1
+                    elif right > 0:
+                        G[x+1,y,0] -= 1
+                        x += 1
+                    elif bottom > 0:
+                        G[x,y,1] -= 1
+                        y -= 1
+                    elif left > 0:
+                        G[x,y,0] -= 1
+                        x -= 1
+                     
+                color_loops.append(current_loop)
+            loops.append(color_loops)
+            lenghts.append(color_lengths)
+            
+        return loops, lenghts
+    
     def compute_corr(self):
         """
         Checks if vertices of increasing distance are connected by a loop.
@@ -549,9 +666,40 @@ class StateSpace:
                     end_vertices.append(  (start_vertices[i][0] - i, start_vertices[i][1]) )
           
         for i in range(self.grid_size // 2 + 1):
-            is_connected.append(check_connectivity(self.grid, self.num_colors, start_vertices[i], end_vertices[i]))
+            #is_connected.append(  np.max([check_connectivity(self.grid, c, start_vertices[i], end_vertices[i]) for c in range(self.num_colors)]) )  # check all colors | better to call only once for a fixed color! 
+            is_connected.append(  check_connectivity(self.grid, 0, start_vertices[i], end_vertices[i])  ) # check connectivity only for color 0
 
         return is_connected
+    
+    def local_time_corr(self):
+        """
+        Checks if vertices of increasing distance are connected by a loop.
+
+        Returns: A list of 1 or 0 (1 if vertices are connected, 0 if not).
+        """
+        local_times = []
+
+        # generate a random point, then find one at distance d
+
+        start_vertices = [tuple(np.random.randint(1, self.grid_size + 1, 2)) for _ in range(self.grid_size // 2 + 1)]
+        end_vertices = []
+        
+        for i in range(self.grid_size // 2 + 1):
+            if np.random.rand() <= 0.5: # vertical
+                if start_vertices[i][1] + i <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] + i) )
+                else:
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] - i) )
+            else: # horizontal
+                if start_vertices[i][0] + i <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0] + i, start_vertices[i][1]) )
+                else:
+                    end_vertices.append(  (start_vertices[i][0] - i, start_vertices[i][1]) )
+            
+        for i in range(self.grid_size // 2 + 1):
+            local_times.append([self.get_local_time_i(0, start_vertices[i][0], start_vertices[i][1]), self.get_local_time_i(0, end_vertices[i][0], end_vertices[i][1])] )
+
+        return local_times
     
     def mean_loop_length(self):
         """
@@ -561,7 +709,8 @@ class StateSpace:
           The mean loop length for the grid.
         """
         _, lengths = self.loop_builder()
-        return [ sum(l) / len(l) for l in lengths]
+        lengths_merged = [l for sublist in lengths for l in sublist]
+        return np.mean(lengths_merged)
                 
     def check_state(self):
         """
@@ -577,30 +726,22 @@ class StateSpace:
                         print('###  illegal state!  ###')
                         return False 
         return True 
-    
-    def find_connected_components(self, v=None):
-        
-        """
-        Find connected components in each 2D grid of the 4D array.
-        
-        :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
-        :return: List of lists containing the number of connected components for each color
-        """
-        binary_array = self.grid != 0 
-        binary_array = binary_array.astype(int)
-            
-        return find_components_with_vertices(binary_array, v)
-    
-    def check_percolation(self, color=0):
+  
+    def check_percolation(self, color=None):
         """
         Checks for percolation
         """
         # generate perc configuration
+        # choose a random color 
+        if color is None:
+            color = np.random.randint(self.num_colors)
         perc_conf = np.where( self.grid[color] >= 1, 1, 0)
-        
-        for y in range(self.grid_size + 1):
-            if bfs(perc_conf, (0, y)):
+        perc, visited = bfs(perc_conf, (0, 0))
+        for y in range(1, self.grid_size + 1):
+            if perc:
                 return 1 
+            elif not visited[0,y]:
+                perc, visited = bfs(perc_conf, (0, y))      
         return 0 
     
     def plot_one_color(self, c, cmap, ax, alpha=1.0, linewidth = 1.0):
@@ -674,7 +815,7 @@ class StateSpace:
         return lc
     
         
-    def plot_loop_overlap(self, loops, figsize=(12,12), alpha=1, linewidth=1.5, colors=None, file_name=None):
+    def plot_loop_overlap(self, loops, color=None, figsize=(12,12), alpha=1, linewidth=1.5, colors=None, file_name=None):
         """
         Highlights a loop(s) in the overlapped grid
 
@@ -686,26 +827,40 @@ class StateSpace:
         """
         # Create a figure and axes
         fig, ax = plt.subplots(figsize=figsize)
-        for c in range(self.num_colors):
-            # Define a colormap
-            num_segments = int(self.max_links()[c]+1)
-            cmap = create_cmap(self.num_colors, c, num_segments)
+        if color is None:
+            for c in range(self.num_colors):
+                # Define a colormap
+                num_segments = int(self.max_links()[c]+1)
+                cmap = create_cmap(self.num_colors, c, num_segments)
 
-            self.plot_one_color(c, cmap, ax, alpha)
-            self.plot_loop(ax, c, loops[c], colors=colors, alpha=alpha, linewidth=linewidth)
+                self.plot_one_color(c, cmap, ax, alpha)
+                self.plot_loop(ax, c, loops[c], colors=colors, alpha=alpha, linewidth=linewidth)
+                
+                ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
+                ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
+                ax.set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
+                
+                ax.axis('off')
+                
+                #ax.axis('square')
+                # grid
+                #ax.set_xticks(np.arange(1,self.grid_size+1), minor = True)
+                #ax.set_yticks(np.arange(1,self.grid_size+1), minor = True)
+                #ax.grid(which='both')
+                #ax.axis('off')
+        else:
+            # Define a colormap
+            num_segments = int(self.max_links()[color]+1)
+            cmap = create_cmap(self.num_colors, color, num_segments)
+
+            self.plot_one_color(color, cmap, ax, alpha)
+            self.plot_loop(ax, color, loops[color], colors=colors, alpha=alpha, linewidth=linewidth)
             
             ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
             ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             ax.set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
             
             ax.axis('off')
-            
-            #ax.axis('square')
-            # grid
-            #ax.set_xticks(np.arange(1,self.grid_size+1), minor = True)
-            #ax.set_yticks(np.arange(1,self.grid_size+1), minor = True)
-            #ax.grid(which='both')
-            #ax.axis('off')
         #save it
         if file_name != None:
             plt.savefig(file_name)
@@ -1069,11 +1224,11 @@ def bfs(perc_conf, x):
         if horiz:
             if currentVertex[0] == grid_size - 2:
                 #print(f'Reached vertex {currentVertex}')
-                return 1 
+                return 1, None
         else:
             if currentVertex[1] == grid_size - 2:
                 #print(f'Reached vertex {currentVertex}')
-                return 1 
+                return 1, None
             
         # Get all neighbours of currentVertex        
         # If an adjacent has not been visited, then mark it visited and enqueue it
@@ -1097,69 +1252,8 @@ def bfs(perc_conf, x):
             visited[currentVertex[0], currentVertex[1]+1] = 1
             queue.append((currentVertex[0], currentVertex[1]+1))
               
-    return 0
-
-def dfs_with_components(binary_array, x, y, color, visited, component):
-    """
-    Perform DFS from the given vertex, marking all reachable vertices within the same component
-    and adding them to the component list.
-    
-    :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
-    :param x: Current x coordinate in the grid
-    :param y: Current y coordinate in the grid
-    :param color: Current color layer being processed
-    :param visited: 2D array marking visited vertices for the current color layer
-    :param component: List to store vertices belonging to the current component
-    """
-    grid_size = binary_array.shape[1]
-    if x <= 0 or x >= grid_size or y <= 0 or y >= grid_size or visited[x, y]:
-        return
-    
-    # Mark the current vertex as visited and add it to the component
-    visited[x, y] = True
-    component.append((x, y))
-    
-    # Horizontal edge to the right
-    if y + 1 < grid_size and binary_array[color, x, y, 0] == 1:
-        dfs_with_components(binary_array, x, y + 1, color, visited, component)
-    
-    # Vertical edge downward
-    if x + 1 < grid_size and binary_array[color, x, y, 1] == 1:
-        dfs_with_components(binary_array, x + 1, y, color, visited, component)
-    
-    # Note: This approach assumes directed edges. If edges are bidirectional,
-    # you'd need to consider additional cases for left and upward edges.
-
-def find_components_with_vertices(binary_array, v=None):
-    """
-    Find connected components for each color in binary_array and return the vertices
-    in each connected component. If v is not None, returns just the connected components that contain v
-    
-    :param binary_array: 4D numpy array with shape (num_colors, grid_size, grid_size, 2)
-    :return: List of lists containing the vertices of connected components for each color
-    """
-    num_colors, grid_size, _, _ = binary_array.shape
-    components_per_color = []
-    
-    for color in range(num_colors):
-        visited = np.zeros((grid_size, grid_size), dtype=bool)
-        color_components = []
-        if v is None:
-            for x in range(grid_size):
-                for y in range(grid_size):
-                    if not visited[x, y]:
-                        component = []
-                        dfs_with_components(binary_array, x, y, color, visited, component)
-                        color_components.append(component)
-        else:
-            component = []
-            dfs_with_components(binary_array, v[0], v[1], color, visited, component)
-            color_components.append(component)
-            
-        components_per_color.append(color_components)
-        
-    return components_per_color
-           
+    return 0, visited
+         
 #########################################################################################################
 #
 #     To improve performance, we redefine computationally heavy functions outside and use numba 
@@ -1388,133 +1482,116 @@ def acceptance_prob_no_int(S, M, s, X, c, beta, num_colors, algo, grid):
 
 #####
 @jit(fastmath=True, nopython=True, cache=True)
-def check_connectivity(grid, num_colors, v1 = None, v2 = None):
-        """
-        Build loops for each color in the grid.
+def check_connectivity(grid, c, v1, v2):
+    """
+    Build loops for each color in the grid.
 
-        If v1 and v2 are both None, return a list of loops for each color and a list of integers representing the lengths of all loops.
-        If v1 and v2 are both not None, return 1 if there exists a loop that joins v1 and v2, and 0 otherwise.
+    If v1 and v2 are both None, return a list of loops for each color and a list of integers representing the lengths of all loops.
+    If v1 and v2 are both not None, return 1 if there exists a loop that joins v1 and v2, and 0 otherwise.
 
-        Args:
-          v1 (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
-          v2 (Optional[Tuple[int, int]]): The ending vertex for the loop. Defaults to None.
+    Args:
+        v1 (Optional[Tuple[int, int]]): The starting vertex for the loop. Defaults to None.
+        v2 (Optional[Tuple[int, int]]): The ending vertex for the loop. Defaults to None.
 
-        Returns:
-          If v1 and v2 are both None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
-          If v1 and v2 are both not None, return an integer indicating whether there exists a loop that joins v1 and v2 (1 if such a loop exists, 0 otherwise).
-        """
+    Returns:
+        If v1 and v2 are both None, return a tuple of two lists: the first list contains a list of loops for each color, where each loop is represented as a list of tuples of integers representing the (x, y) coordinates of the vertices in the loop; the second list contains the lengths of all loops.
+        If v1 and v2 are both not None, return an integer indicating whether there exists a loop that joins v1 and v2 (1 if such a loop exists, 0 otherwise).
+    """
 
-        for c in range(num_colors):
-            #copy the grid 
-            G = np.copy(grid[c])
-            nz = G.nonzero()
-            non_zero = len(nz[0])
+    G = np.copy(grid[c])
+
+    non_zero = 1
+    
+    while non_zero > 0:
+
+        non_zero = G[v1[0], v1[1], 0] +  G[v1[0], v1[1], 1] + G[v1[0] + 1, v1[1], 0] + G[v1[0], v1[1] + 1, 1]
+        if non_zero == 0:
+            return 0
+        
+        x, y = v1[0], v1[1]
+        if (x,y) == v2:
+            return 1
             
-            if non_zero == 0:
-                return 0
+        starting_vertex = (x,y)
+        
+        # first step outside loops | why?
+        dir = []
+        
+        top = G[x,y+1,1]
+        right = G[x+1,y,0]
+        bottom = G[x,y,1]
+        left = G[x,y,0]
+        
+        if top > 0:
+            dir.extend([0]*top)
+        if right > 0:
+            dir.extend([1]*right)
+        if bottom > 0:
+            dir.extend([2]*bottom)
+        if left > 0:
+            dir.extend([3]*left)
+        
+        # pick a random dir with prob prop to num_links  
+        rand_dir = np.random.choice(np.array(dir))
+        
+        if rand_dir == 0:
+            # remove one link
+            G[x,y+1,1] -= 1
+            #move there
+            y += 1
+        elif rand_dir == 1:
+            G[x+1,y,0] -= 1
+            x += 1
+        elif rand_dir == 2:
+            G[x,y,1] -= 1
+            y -= 1
+        elif rand_dir == 3:
+            G[x,y,0] -= 1
+            x -= 1
+
+        while True:
+            if (x,y) == v2:
+                return 1 
+        
+            # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
+            dir = []
             
-            while non_zero > 0:
-                #pick first non-zero and unvisited edge
-                nz = G.nonzero()
-                non_zero = len(nz[0])
-                if non_zero == 0:
+            top = G[x,y+1,1]
+            right = G[x+1,y,0]
+            bottom = G[x,y,1]
+            left = G[x,y,0]
+            
+            if top > 0:
+                dir.extend([0]*top)
+            if right > 0:
+                dir.extend([1]*right)
+            if bottom > 0:
+                dir.extend([2]*bottom)
+            if left > 0:
+                dir.extend([3]*left)
+
+            if (x,y) == starting_vertex:
+                if random.random() <= 1/(len(dir)+1):
                     break
-                # choose a random vertex with non-zero incident links, or choose v1
-                if v1 is None:
-                    rand_index = np.random.randint(0, non_zero)
-                    x, y  = nz[0][rand_index], nz[1][rand_index]
-                else:
-                    x, y = v1[0], v1[1]
-                    if (x,y) == v2:
-                        return 1
-                    
-                starting_vertex = (x,y)
-                
-                # first step outside loops
-                dir = []
-                
-                top = G[x,y+1,1]
-                right = G[x+1,y,0]
-                bottom = G[x,y,1]
-                left = G[x,y,0]
-                
-                if top > 0:
-                    dir.extend([0]*top)
-                if right > 0:
-                    dir.extend([1]*right)
-                if bottom > 0:
-                    dir.extend([2]*bottom)
-                if left > 0:
-                    dir.extend([3]*left)
-                
-                if len(dir) == 0:
-                    return 0 
-                
-                # pick a random dir with prob prop to num_links  
-                rand_dir = np.random.choice(np.array(dir))
-                
-                if rand_dir == 0:
-                    # remove one link
-                    G[x,y+1,1] -= 1
-                    #move there
-                    y += 1
-                elif rand_dir == 1:
-                    G[x+1,y,0] -= 1
-                    x += 1
-                elif rand_dir == 2:
-                    G[x,y,1] -= 1
-                    y -= 1
-                elif rand_dir == 3:
-                    G[x,y,0] -= 1
-                    x -= 1
-                    
-                length = 0
-                while True:
-                    if (x,y) == v2:
-                        return 1 
-                    length += 1
-                    # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
-                    dir = []
-                    
-                    top = G[x,y+1,1]
-                    right = G[x+1,y,0]
-                    bottom = G[x,y,1]
-                    left = G[x,y,0]
-                    
-                    if top > 0:
-                        dir.extend([0]*top)
-                    if right > 0:
-                        dir.extend([1]*right)
-                    if bottom > 0:
-                        dir.extend([2]*bottom)
-                    if left > 0:
-                        dir.extend([3]*left)
-
-                    if (x,y) == starting_vertex:
-                        if random.random() <= 1/(len(dir)+1):
-                            break
-                    
-                    # pick a random dir with prob prop to num_links  
-                    rand_dir = np.random.choice(np.array(dir))
-                    
-                    if rand_dir == 0:
-                        # remove one link
-                        G[x,y+1,1] -= 1
-                        #move there
-                        y += 1
-                    elif rand_dir == 1:
-                        G[x+1,y,0] -= 1
-                        x += 1
-                    elif rand_dir == 2:
-                        G[x,y,1] -= 1
-                        y -= 1
-                    elif rand_dir == 3:
-                        G[x,y,0] -= 1
-                        x -= 1
-                     
-###
-
-
+            
+            # pick a random dir with prob prop to num_links  
+            rand_dir = np.random.choice(np.array(dir))
+            
+            if rand_dir == 0:
+                # remove one link
+                G[x,y+1,1] -= 1
+                #move there
+                y += 1
+            elif rand_dir == 1:
+                G[x+1,y,0] -= 1
+                x += 1
+            elif rand_dir == 2:
+                G[x,y,1] -= 1
+                y -= 1
+            elif rand_dir == 3:
+                G[x,y,0] -= 1
+                x -= 1
+     
 
 
 @jit(fastmath=True, nopython=True, cache=True)

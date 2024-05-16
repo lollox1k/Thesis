@@ -10,6 +10,7 @@ from itertools import cycle
 import logging
 import time
 from functools import wraps
+from collections import deque
 
 import colorsys
 from matplotlib.colors import Normalize, ListedColormap
@@ -112,7 +113,7 @@ class StateSpace:
         self.sample_rate = None
         self.stop = False
         self.data = {}  
-        self.shape = (num_colors, grid_size+2, grid_size+2, 2)  #the +2 is for free bc  we work only on vertices from  (1,grid_size+1)
+        self.shape = (num_colors, grid_size+2, grid_size+2, 2)  #the +2 is for free bc  we work only on vertices from  [1, grid_size], in terms of slices 1:-1 
         self.grid = 2*np.random.randint(0, 10, self.shape, dtype=int) if bc == 'random' else bc*np.ones(self.shape, dtype=int)
         self.worm = np.array([(0,0), (0,0)])
       
@@ -1072,6 +1073,34 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
         
 
+def bfs(perc_conf, x):
+    """
+    Perform a BFS from the given vertex x, marking all visited vertices. If vertex y is found, return 1
+    Vertex x should be on the left/bottom of the grid
+    """
+    
+    visited = np.zeros(shape=(perc_conf.shape[0], perc_conf.shape[0]))
+    queue = deque()
+    
+    # Set current vertex as visited, add it to the queue
+    visited[x[0], x[1]] = 1 
+    queue.append(x) 
+    
+    if x[0] == 1: # x is on the left border
+        endgoal = perc_conf.shape[0]
+    # Iterate over the queue
+    while queue:
+        # Dequeue 
+        currentVertex = queue.popleft()
+        
+        # check here
+        if currentVertex
+        # Get all neighbours of currentVertex
+        # If an adjacent has not been visited, then mark it visited and enqueue it
+        
+    return 0
+
+
 def dfs_with_components(binary_array, x, y, color, visited, component):
     """
     Perform DFS from the given vertex, marking all reachable vertices within the same component
@@ -1513,15 +1542,6 @@ def find_connected_components(matrix):
                 components.append(current_island)
     return components
 
-# Example matrix as a NumPy array
-matrix_example = np.array([
-    [1, 1, 0, 0, 0],
-    [0, 1, 0, 0, 1],
-    [1, 0, 0, 1, 1],
-    [0, 0, 0, 0, 0],
-    [1, 0, 1, 0, 1]
-])
-        
 
 # since running @jit functions for the first time is slow, we do a step of the chain at import
 m = StateSpace(1, 10, 1)

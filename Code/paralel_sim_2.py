@@ -24,7 +24,7 @@ def wrapper(args):
     for grid_size in (t := tqdm(grid_sizes)): 
         t.set_description(f'{grid_size = }') 
         
-        m = StateSpace(num_colors=num_colors, grid_size=grid_size, beta=beta, init=0)
+        m = StateSpace(num_colors=num_colors, grid_size=grid_size, beta=beta)
         
         observables = {
         'origin_loop_length': lambda: np.sum(np.concatenate(m.loop_builder((grid_size//2, grid_size//2))[1]))  # sum   length of all loops touching the origin

@@ -27,10 +27,10 @@ def wrapper(args):
         m = StateSpace(num_colors=num_colors, grid_size=grid_size, beta=beta, init=0)
         
 
-        # reach equilibrium 10M 
+        # reach equilibrium 
         m.step(num_steps=eq_steps, progress_bar=False)
     
-        # sample 10M
+        # sample 
         m.step(num_steps=run_steps, sample_rate=sample_rate, observables=[m.check_percolation], progress_bar=False)
        
         data.append(m.data['check_percolation'])
@@ -40,21 +40,21 @@ def wrapper(args):
 if __name__ == '__main__':
     
     params = {
-        'num_colors': 3,
-        'grid_size': 128, #[32, 64, 96, 128], #, 192, 256], 
-        'betas': np.arange(1, 7, 0.5),
-        'eq_steps': 10_000_000,
+        'num_colors': 1,
+        'grid_size': 64, #[32, 64, 96, 128], #, 192, 256], 
+        'betas': np.arange(0.125, 1, 0.125),
+        'eq_steps': 1_000_000,
         'run_steps': 1_000_000,
         'sample_rate': 1_000
         }
 
     num_cores = cpu_count() // 2
-    N = 4
+    N = 1
     
     print(f"Running {N} trial(s) for each of the {num_cores} cores.")  
     
     start = time.time()
-    with Pool(processes=N) as pool:
+    with Pool(processes=num_cores) as pool:
         results = pool.map(wrapper, [params] * N * num_cores)
     end = time.time()
     
@@ -75,7 +75,7 @@ if __name__ == '__main__':
    # Generate a timestamp string without colons
     timestamp = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
     #file_name = f"run_{params['num_colors']}_{params['grid_size']}_{timestamp}.json"
-    file_name = f"{params['grid_size']}_{timestamp}.json"
+    file_name = f"one_color_{params['grid_size']}_{timestamp}.json"
     print(f'Saving results to file {DATAPATH + file_name}')
     
     with open(DATAPATH + file_name, 'w') as file:
