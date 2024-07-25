@@ -249,12 +249,13 @@ class StateSpace:
             # handle boundary cases 
             if s[0] == 0:
                 if s[1] == 0:
-                    transformations = [(0,0,0,0)]
-                S[1] = self.grid[c, s[0], s[1], 1]
-                if S[1] >= 2:
-                    transformations = [(0, 2, 0, 0), (0, -2, 0, 0)]
+                    transformations = [(0,0,0,0)] # do nothing
                 else:
-                    transformations = [(0, 2, 0, 0)]
+                    S[1] = self.grid[c, s[0], s[1], 1] 
+                    if S[1] >= 2:
+                        transformations = [(0, 2, 0, 0), (0, -2, 0, 0)]
+                    else:
+                        transformations = [(0, 2, 0, 0)]
                     
             elif s[1] == 0:
                 S[0] = self.grid[c, s[0], s[1], 0]
@@ -406,9 +407,11 @@ class StateSpace:
         """
         loops = []
         lenghts = []
+        visits = []
         for c in range(self.num_colors):
             color_loops = []
             color_lengths = []
+            color_visits = []
             #copy the grid 
             G = np.copy(self.grid[c])
             # set to zero in the boundary  
@@ -424,6 +427,7 @@ class StateSpace:
                 
             if non_zero == 0:
                 color_lengths.append(0)
+                color_visits.append([])
                     
             while non_zero > 0:
                 #pick first non-zero and unvisited edge
@@ -479,9 +483,13 @@ class StateSpace:
                     x -= 1
                     
                 length = 0
+                visit = 0
                 while True:
-                    current_loop.append((x,y))
                     length += 1
+                    if (x,y) not in current_loop:
+                        visit += 1
+                    
+                    current_loop.append((x,y))
                     # look if we can trav in each of the 4 directions: top = 0, right = 1, down = 2 and left = 3 with prob eq. to num_links/Z
                     dir = []
                     
@@ -504,6 +512,7 @@ class StateSpace:
                     if (x,y) == starting_vertex:
                         if np.random.rand() <= 1/(len(dir)+1):
                             color_lengths.append(length)
+                            color_visits.append(visit)
                             break
                     
                     rand_dir = np.random.choice(dir)
@@ -526,8 +535,9 @@ class StateSpace:
                 color_loops.append(current_loop)
             loops.append(color_loops)
             lenghts.append(color_lengths)
+            visits.append(color_visits)
             
-        return loops, lenghts
+        return loops, lenghts, visits
     
     def loop_builder_fast(self, v=None):
         """
@@ -649,33 +659,32 @@ class StateSpace:
         is_connected = []
 
         # generate a random point, then find one at distance d
-
-        start_vertices = [tuple(np.random.randint(1, self.grid_size + 1, 2)) for _ in range(self.grid_size // 2 + 1)]
+        start_vertices = [tuple(np.random.randint(1, self.grid_size + 1, 2)) for _ in range(self.grid_size // 2 + 1)] #random 
+        #start_vertices = [(self.grid_size // 2, self.grid_size // 2) for _ in range(self.grid_size // 2 + 1)] # center
         end_vertices = []
         
-        for i in range(self.grid_size // 2 + 1):
+        for i in range(self.grid_size // 2):
             if np.random.rand() <= 0.5: # vertical
-                if start_vertices[i][1] + i <= self.grid_size:
-                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] + i) )
+                if start_vertices[i][1] + (i+1) <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] + (i+1)) )
                 else:
-                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] - i) )
+                    end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] - (i+1)) )
             else: # horizontal
-                if start_vertices[i][0] + i <= self.grid_size:
-                    end_vertices.append(  (start_vertices[i][0] + i, start_vertices[i][1]) )
+                if start_vertices[i][0] + (i+1) <= self.grid_size:
+                    end_vertices.append(  (start_vertices[i][0] + (i+1), start_vertices[i][1]) )
                 else:
-                    end_vertices.append(  (start_vertices[i][0] - i, start_vertices[i][1]) )
+                    end_vertices.append(  (start_vertices[i][0] - (i+1), start_vertices[i][1]) )
           
-        for i in range(self.grid_size // 2 + 1):
+        for i in range(self.grid_size // 2):
             #is_connected.append(  np.max([check_connectivity(self.grid, c, start_vertices[i], end_vertices[i]) for c in range(self.num_colors)]) )  # check all colors | better to call only once for a fixed color! 
-            is_connected.append(  check_connectivity(self.grid, 0, start_vertices[i], end_vertices[i])  ) # check connectivity only for color 0
+            color = np.random.randint(self.num_colors)
+            is_connected.append(  check_connectivity(self.grid, color, start_vertices[i], end_vertices[i])  ) # check connectivity only for color 0
 
         return is_connected
     
     def local_time_corr(self):
         """
-        Checks if vertices of increasing distance are connected by a loop.
-
-        Returns: A list of 1 or 0 (1 if vertices are connected, 0 if not).
+        LT corrs
         """
         local_times = []
 
@@ -684,7 +693,7 @@ class StateSpace:
         start_vertices = [tuple(np.random.randint(1, self.grid_size + 1, 2)) for _ in range(self.grid_size // 2 + 1)]
         end_vertices = []
         
-        for i in range(self.grid_size // 2 + 1):
+        for i in range(25):
             if np.random.rand() <= 0.5: # vertical
                 if start_vertices[i][1] + i <= self.grid_size:
                     end_vertices.append(  (start_vertices[i][0], start_vertices[i][1] + i) )
@@ -696,8 +705,9 @@ class StateSpace:
                 else:
                     end_vertices.append(  (start_vertices[i][0] - i, start_vertices[i][1]) )
             
-        for i in range(self.grid_size // 2 + 1):
-            local_times.append([self.get_local_time_i(0, start_vertices[i][0], start_vertices[i][1]), self.get_local_time_i(0, end_vertices[i][0], end_vertices[i][1])] )
+        for i in range(25): 
+            color = np.random.randint(self.num_colors)
+            local_times.append([ int(self.get_local_time_i(color, start_vertices[i][0], start_vertices[i][1])), int(self.get_local_time_i(color, end_vertices[i][0], end_vertices[i][1]))] )
 
         return local_times
     
@@ -736,7 +746,8 @@ class StateSpace:
         if color is None:
             color = np.random.randint(self.num_colors)
         perc_conf = np.where( self.grid[color] >= 1, 1, 0)
-        perc, visited = bfs(perc_conf, (0, 0))
+        perc = False 
+        visited = np.zeros(shape=(self.grid_size, self.grid_size))
         for y in range(1, self.grid_size + 1):
             if perc:
                 return 1 
@@ -775,47 +786,80 @@ class StateSpace:
         lc = LineCollection(segments, colors=line_colors, linewidths=linewidth, alpha=alpha)
         ax.add_collection(lc)
         return lc
-    
-    def plot_loop(self, ax, c, loop, colors=None, alpha=0.25, linewidth=1.5): 
-        """
-        Highlights a loop(s) in a given color c.
+    """
+    def plot_loop(self, c, loop, colors = None, alpha = 0.25, linewidth = 1.5): 
+       
+        Highlights a loop in a given color c.
 
         Args:
           c: The color for which to plot.
-          loop: The loop(s) to be plotted
+          loop: The loop(s) to be plotted.
+          color: The color to be used for plotting the loop. Default is yellow
+          alpha: The transparency level for the plot.
+          linewidth: The width of the lines in the plot.
+       
+        if type(loop[0]) ==  tuple:
+            loop = [loop] 
+            
+        if colors == None:
+            colors = cycle([plt.cm.Set3(i) for i in range(12)])
+        
+        fig, ax = plt.subplots(figsize=(12,12))
+        num_segments = int(self.max_links()[c]+1)            #color dependet!
+        cmap = create_cmap(self.num_colors, c, num_segments)
+        self.plot_one_color(c, cmap, ax)
+        
+         
+        for l in loop:
+            color = next(colors)
+            for i in range(len(l)-1):
+                ax.plot( [l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]], linewidth=linewidth, color = color, alpha = alpha)
+            #draw last link
+            ax.plot( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]], linewidth=linewidth, color = color, alpha = alpha, label = 'length = {}'.format(len(l)))
+        #ax.set_title('length = {}'.format(len(loop)))
+        ax.legend()
+        plt.show()
+    """
+    def plot_loop(self, ax, c, loop, color=None, alpha=0.25, linewidth=1.5): 
+        """
+        Highlights a loop in a given color c.
+
+        Args:
+          c: The color for which to plot.
+          loop: The loop to be plotted
           color: The color to be used for plotting the loop. 
           alpha: The transparency level for the plot.
           linewidth: The width of the lines in the plot.
         """
         if loop == []:
             return None
-        elif type(loop[0]) ==  tuple:
-            loop = [loop] 
+        
+        if color == None:
+           # colors_gen = cycle([plt.cm.Set3(i) for i in range(12)])
+           # colors = [next(colors_gen) for _ in range(len(loop))] 
+            colors = cycle([plt.cm.Set3(i) for i in range(12)])
+            color = next(colors)
             
-        if colors == None:
-            colors_gen = cycle([plt.cm.Set3(i) for i in range(12)])
-            colors = [next(colors_gen) for _ in range(len(loop))] 
         # Initialize lists to collect line segments
         segments = []
        
-        for l in loop:
-            for i in range(len(l)-1):
-                #segments.append([l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]])
-                segments.append([l[i], l[i+1]])
-               
-            #draw last link
-            #segments.append( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]]) #, linewidth=linewidth, color=color, alpha=alpha, label='length = {}'.format(len(l)))
-            if np.sum( abs(l[-1][0] - l[0][0]) + abs(l[-1][1] - l[0][1]) ) == 1:
-                segments.append([l[-1], l[0]])  
-        #line_colors = [cmap(self.grid[c][x][y][z]) for x in range(len(self.grid[0][0])) for y in range(len(self.grid[0][0])) for z in range(2) if self.grid[c][x][y][z] != 0]
-       
+        for i in range(len(loop)-1):
+            #segments.append([l[i][0], l[i+1][0]], [l[i][1], l[i+1][1]])
+            segments.append([loop[i], loop[i+1]])
+            
+        #draw last link
+        #segments.append( [l[0][0], l[-1][0]], [l[0][1], l[-1][1]]) #, linewidth=linewidth, color=color, alpha=alpha, label='length = {}'.format(len(l)))
+        if np.sum( abs(loop[-1][0] - loop[0][0]) + abs(loop[-1][1] - loop[0][1]) ) == 1:
+            segments.append([loop[-1], loop[0]])  
+    #line_colors = [cmap(self.grid[c][x][y][z]) for x in range(len(self.grid[0][0])) for y in range(len(self.grid[0][0])) for z in range(2) if self.grid[c][x][y][z] != 0]
+    
         # Create a LineCollection
-        lc = LineCollection(segments, colors=colors, linewidths=linewidth, alpha=alpha)
+        lc = LineCollection(segments, color=color, linewidths=linewidth, alpha=alpha)
         ax.add_collection(lc)
         return lc
     
         
-    def plot_loop_overlap(self, loops, color=None, figsize=(12,12), alpha=1, linewidth=1.5, colors=None, file_name=None):
+    def plot_loop_overlap(self, loops, color=None, figsize=(12,12), alpha_links=1, alpha_loop=1, linewidth=1.5, colors=None, file_name=None):
         """
         Highlights a loop(s) in the overlapped grid
 
@@ -833,8 +877,30 @@ class StateSpace:
                 num_segments = int(self.max_links()[c]+1)
                 cmap = create_cmap(self.num_colors, c, num_segments)
 
-                self.plot_one_color(c, cmap, ax, alpha)
-                self.plot_loop(ax, c, loops[c], colors=colors, alpha=alpha, linewidth=linewidth)
+                self.plot_one_color(c, cmap, ax, alpha_links)
+                
+                if colors == None:
+                    #colors = cycle([plt.cm.Set3(i) for i in range(12)])
+                     # Define a list of high-contrast colors
+                    high_contrast_colors = [
+                        "#1f77b4",  # Blue
+                        "#ff7f0e",  # Orange
+                        "#2ca02c",  # Green
+                        "#d62728",  # Red
+                        "#9467bd",  # Purple
+                        "#8c564b",  # Brown
+                        "#e377c2",  # Pink
+                        "#7f7f7f",  # Gray
+                        "#bcbd22",  # Yellow
+                        "#17becf"   # Cyan
+                    ]
+
+                    # Create a color cycler
+                    colors = cycle(high_contrast_colors)
+                
+                for l in loops[c]:
+                    color = next(colors)
+                    self.plot_loop(ax, c, l, color=color, alpha=alpha_loop, linewidth=linewidth)
                 
                 ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
                 ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
@@ -853,8 +919,8 @@ class StateSpace:
             num_segments = int(self.max_links()[color]+1)
             cmap = create_cmap(self.num_colors, color, num_segments)
 
-            self.plot_one_color(color, cmap, ax, alpha)
-            self.plot_loop(ax, color, loops[color], colors=colors, alpha=alpha, linewidth=linewidth)
+            self.plot_one_color(color, cmap, ax, alpha_links)
+            self.plot_loop(ax, color, loops[color], colors=colors, alpha=alpha_loop, linewidth=linewidth)
             
             ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
             ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
@@ -867,7 +933,7 @@ class StateSpace:
         plt.show()
         
     
-    def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, axis=False, file_name=None):
+    def plot_grid(self, figsize=(10,8), linewidth=1.0, colorbar=True, axis=False, file_name=None, show_grid=False):
         """
         Plot the grid for all colors.
 
@@ -906,6 +972,8 @@ class StateSpace:
                 cbar.set_ticks(  0.5 + np.arange(0, num_segments,1))
                 cbar.set_ticklabels(list(range(0, num_segments)))
                 #cbar.set_label('Color Mapping')
+            if show_grid:
+                plt.grid()
 
         fig.suptitle(r'grid size = {}     $\beta$ = {}        steps = {:g}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
         #save it
@@ -913,7 +981,7 @@ class StateSpace:
             plt.savefig(file_name)
         plt.show()
 
-    def plot_overlap(self, figsize = (12,12), normalized = False, file_name = None, alpha = 0.7, linewidth = 1.0):
+    def plot_overlap(self, figsize=(12,12), normalized=False, file_name=None, alpha=0.7, linewidth=1.0, title=None):
         """
         Plot the overlap of all colors in the grid.
 
@@ -929,13 +997,18 @@ class StateSpace:
 
         for c in range(self.num_colors):
             # Define a colormap
-            num_segments = int(self.max_links()[c]+1) if not normalized else 2
+            #num_segments = int(self.max_links()[c]+1) if not normalized else 2
+            num_segments = int( np.ceil(self.mean_links()[c] * 1.5 + 2)) if not normalized else 2
             cmap = create_cmap(self.num_colors, c, num_segments)
 
             self.plot_one_color(c, cmap, ax, alpha, linewidth)
-            ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
-            ax.set_xlim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
-            ax.set_ylim(-(1+0.05*self.grid_size), 2+self.grid_size*1.05)
+            if title is None:
+                ax.set_title(r'grid size = {}     $\beta$ = {}        steps = {:.2e}'.format(self.grid_size, self.beta, self.accepted + self.rejected))
+            else:
+                ax.set_title(title)
+                
+            ax.set_xlim(-2, 2+self.grid_size)
+            ax.set_ylim(-2, 2+self.grid_size)
             
             ax.axis('off')
             
@@ -950,7 +1023,7 @@ class StateSpace:
             plt.savefig(file_name)
         plt.show()
         
-    def animate(self, frames=None, interval=50, normalized=False, file_name=None, alpha = 1, linewidth=1):
+    def animate(self, frames=None, interval=50, normalized=False, file_name=None, alpha = 1, linewidth=1, title=None):
          
          # first check if we have data
         assert 'get_grid' in self.data, 'to generate an animation first sample the grid state using the method "get_grid"'
@@ -971,7 +1044,10 @@ class StateSpace:
             # Instead of clearing and redrawing, make all previous artists invisible
             for artist in ax.collections:
                 artist.set_visible(False)
-            ax.set_title('step {}'.format(i * self.sample_rate))
+            if title == None:
+                ax.set_title('step {}'.format(i * self.sample_rate) )
+            else:
+                ax.set_title(title(i))
             artists = [] 
             
             for c in range(self.num_colors):
@@ -1012,7 +1088,7 @@ class StateSpace:
         print('mean number of links: {}'.format(self.mean_links()))
         print('max number of links: {}'.format(self.max_links() ))
         print('mean local time: {}'.format(self.mean_local_time()))
-        _, lengths = self.loop_builder() #stats on color 0
+        _, lengths, _ = self.loop_builder() #stats on color 0
         
         mean_loop_lenghts = [np.mean(l) for l in lengths]
         max_loop_lenghts = [np.max(l) for l in lengths]
